@@ -1,0 +1,758 @@
+[
+  {
+    "id": "Teir1_001",
+    "name": "은은함",
+    "tier": 1,
+    "probability": 0.09321494
+  },
+  {
+    "id": "Teir1_002",
+    "name": "영롱함",
+    "tier": 1,
+    "probability": 0.096344064
+  },
+  {
+    "id": "Teir1_003",
+    "name": "반짝임",
+    "tier": 1,
+    "probability": 0.158761842
+  },
+  {
+    "id": "Teir1_004",
+    "name": "찬란함",
+    "tier": 1,
+    "probability": 0.017951287
+  },
+  {
+    "id": "Teir1_005",
+    "name": "금속",
+    "tier": 1,
+    "probability": 0.229578846
+  },
+  {
+    "id": "Teir1_006",
+    "name": "은",
+    "tier": 1,
+    "probability": 0.097332208
+  },
+  {
+    "id": "Teir1_007",
+    "name": "금",
+    "tier": 1,
+    "probability": 0.070981695
+  },
+  {
+    "id": "Teir1_008",
+    "name": "백금",
+    "tier": 1,
+    "probability": 0.053359789
+  },
+  {
+    "id": "Teir1_009",
+    "name": "구리",
+    "tier": 1,
+    "probability": 0.003952577
+  },
+  {
+    "id": "Teir1_010",
+    "name": "무기 부품",
+    "tier": 1,
+    "probability": 0.003952577
+  },
+  {
+    "id": "Teir1_011",
+    "name": "꽃",
+    "tier": 1,
+    "probability": 0.098814425
+  },
+  {
+    "id": "Teir1_012",
+    "name": "색깔",
+    "tier": 1,
+    "probability": 0.037878863
+  },
+  {
+    "id": "Teir1_013",
+    "name": "모모프렌즈 카페 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_014",
+    "name": "젤리즈 오락실 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_015",
+    "name": "발렌타인 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_016",
+    "name": "여름 리조트 풀파티 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_017",
+    "name": "할로윈 펌킨 카페 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_018",
+    "name": "전통 온천장 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_019",
+    "name": "새해 하우스 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_020",
+    "name": "밀리터리 캠핑장 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_021",
+    "name": "비치사이드 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_022",
+    "name": "대운동회 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_023",
+    "name": "아비도스 교실 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_024",
+    "name": "게임개발부 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_025",
+    "name": "선샤인 리조트 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_026",
+    "name": "쇼핑몰 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_027",
+    "name": "게헨나 파티 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_028",
+    "name": "트리니티 교실 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_029",
+    "name": "DJ 파티장 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_030",
+    "name": "백귀야행 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_031",
+    "name": "밀레니엄 타워 라운지 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_032",
+    "name": "하이랜더 열차",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_033",
+    "name": "티파티 세트",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir1_034",
+    "name": "와일드헌트 캠퍼스",
+    "tier": 1,
+    "probability": 0.001721677
+  },
+  {
+    "id": "Teir2_001",
+    "name": "영롱함",
+    "tier": 2,
+    "probability": 0.138642243
+  },
+  {
+    "id": "Teir2_002",
+    "name": "반짝임",
+    "tier": 2,
+    "probability": 0.131323422
+  },
+  {
+    "id": "Teir2_003",
+    "name": "찬란함",
+    "tier": 2,
+    "probability": 0.0186766
+  },
+  {
+    "id": "Teir2_004",
+    "name": "금속",
+    "tier": 2,
+    "probability": 0.132526516
+  },
+  {
+    "id": "Teir2_005",
+    "name": "은",
+    "tier": 2,
+    "probability": 0.057061022
+  },
+  {
+    "id": "Teir2_006",
+    "name": "금",
+    "tier": 2,
+    "probability": 0.038012036
+  },
+  {
+    "id": "Teir2_007",
+    "name": "백금",
+    "tier": 2,
+    "probability": 0.033042113
+  },
+  {
+    "id": "Teir2_008",
+    "name": "구리",
+    "tier": 2,
+    "probability": 0.002205672
+  },
+  {
+    "id": "Teir2_009",
+    "name": "무기 부품",
+    "tier": 2,
+    "probability": 0.002205672
+  },
+  {
+    "id": "Teir2_010",
+    "name": "꽃",
+    "tier": 2,
+    "probability": 0.057290183
+  },
+  {
+    "id": "Teir2_011",
+    "name": "색깔",
+    "tier": 2,
+    "probability": 0.098825566
+  },
+  {
+    "id": "Teir2_012",
+    "name": "모모프렌즈 카페 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_013",
+    "name": "젤리즈 오락실 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_014",
+    "name": "발렌타인 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_015",
+    "name": "여름 리조트 풀파티 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_016",
+    "name": "할로윈 펌킨 카페 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_017",
+    "name": "전통 온천장 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_018",
+    "name": "새해 하우스 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_019",
+    "name": "밀리터리 캠핑장 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_020",
+    "name": "비치사이드 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_021",
+    "name": "대운동회 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_022",
+    "name": "아비도스 교실 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_023",
+    "name": "게임개발부 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_024",
+    "name": "선샤인 리조트 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_025",
+    "name": "쇼핑몰 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_026",
+    "name": "게헨나 파티 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_027",
+    "name": "트리니티 교실 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_028",
+    "name": "DJ 파티장 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_029",
+    "name": "백귀야행 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_030",
+    "name": "밀레니엄 타워 라운지 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_031",
+    "name": "하이랜더 열차",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_032",
+    "name": "티파티 세트",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_033",
+    "name": "와일드헌트 캠퍼스",
+    "tier": 2,
+    "probability": 0.004492123
+  },
+  {
+    "id": "Teir2_034",
+    "name": "빨강",
+    "tier": 2,
+    "probability": 0.01039645
+  },
+  {
+    "id": "Teir2_035",
+    "name": "노랑",
+    "tier": 2,
+    "probability": 0.005286022
+  },
+  {
+    "id": "Teir2_036",
+    "name": "갈색",
+    "tier": 2,
+    "probability": 0.001932828
+  },
+  {
+    "id": "Teir2_037",
+    "name": "주황",
+    "tier": 2,
+    "probability": 0.010484247
+  },
+  {
+    "id": "Teir2_038",
+    "name": "분홍",
+    "tier": 2,
+    "probability": 0.002738184
+  },
+  {
+    "id": "Teir2_039",
+    "name": "회색",
+    "tier": 2,
+    "probability": 0.031863081
+  },
+  {
+    "id": "Teir2_040",
+    "name": "검정",
+    "tier": 2,
+    "probability": 0.01224148
+  },
+  {
+    "id": "Teir2_041",
+    "name": "연두색",
+    "tier": 2,
+    "probability": 0.020529364
+  },
+  {
+    "id": "Teir2_042",
+    "name": "청록색",
+    "tier": 2,
+    "probability": 0.001420367
+  },
+  {
+    "id": "Teir2_043",
+    "name": "흰색",
+    "tier": 2,
+    "probability": 0.001391006
+  },
+  {
+    "id": "Teir2_044",
+    "name": "보라",
+    "tier": 2,
+    "probability": 0.000541679
+  },
+  {
+    "id": "Teir2_045",
+    "name": "모란",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_046",
+    "name": "나팔꽃",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_047",
+    "name": "장미",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_048",
+    "name": "튤립",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_049",
+    "name": "벚꽃",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_050",
+    "name": "수선화",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_051",
+    "name": "백일홍",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_052",
+    "name": "민들레",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_053",
+    "name": "백합",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_054",
+    "name": "금잔화",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_055",
+    "name": "도라지꽃",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_056",
+    "name": "목련",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_057",
+    "name": "진달래",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_058",
+    "name": "비취꽃",
+    "tier": 2,
+    "probability": 0.004092095
+  },
+  {
+    "id": "Teir2_059",
+    "name": "백귀야행",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_060",
+    "name": "붉은겨울",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_061",
+    "name": "트리니티",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_062",
+    "name": "게헨나",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_063",
+    "name": "아비도스",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_064",
+    "name": "밀레니엄",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_065",
+    "name": "산해경",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_066",
+    "name": "발키리",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_067",
+    "name": "아리우스",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_068",
+    "name": "하이랜더",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir2_069",
+    "name": "와일드헌트",
+    "tier": 2,
+    "probability": 0.003204383
+  },
+  {
+    "id": "Teir3_001",
+    "name": "반짝임",
+    "tier": 3,
+    "probability": 0.361948788
+  },
+  {
+    "id": "Teir3_002",
+    "name": "찬란함",
+    "tier": 3,
+    "probability": 0.099767935
+  },
+  {
+    "id": "Teir3_003",
+    "name": "은",
+    "tier": 3,
+    "probability": 0.090487197
+  },
+  {
+    "id": "Teir3_004",
+    "name": "금",
+    "tier": 3,
+    "probability": 0.060324798
+  },
+  {
+    "id": "Teir3_005",
+    "name": "백금",
+    "tier": 3,
+    "probability": 0.053364244
+  },
+  {
+    "id": "Teir3_006",
+    "name": "구리",
+    "tier": 3,
+    "probability": 0.013921107
+  },
+  {
+    "id": "Teir3_007",
+    "name": "무기 부품",
+    "tier": 3,
+    "probability": 0.018561476
+  },
+  {
+    "id": "Teir3_008",
+    "name": "꽃",
+    "tier": 3,
+    "probability": 0.092807382
+  },
+  {
+    "id": "Teir3_009",
+    "name": "색깔",
+    "tier": 3,
+    "probability": 0.125289965
+  },
+  {
+    "id": "Teir3_010",
+    "name": "신비",
+    "tier": 3,
+    "probability": 0.006960554
+  },
+  {
+    "id": "Teir3_011",
+    "name": "다이아몬드",
+    "tier": 3,
+    "probability": 0.002320185
+  },
+  {
+    "id": "Teir3_012",
+    "name": "풍족함",
+    "tier": 3,
+    "probability": 0.002320185
+  },
+  {
+    "id": "Teir3_013",
+    "name": "백귀야행",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_014",
+    "name": "붉은겨울",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_015",
+    "name": "트리니티",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_016",
+    "name": "게헨나",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_017",
+    "name": "아비도스",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_018",
+    "name": "밀레니엄",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_019",
+    "name": "산해경",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_020",
+    "name": "발키리",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_021",
+    "name": "아리우스",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_022",
+    "name": "하이랜더",
+    "tier": 3,
+    "probability": 0.006538744
+  },
+  {
+    "id": "Teir3_023",
+    "name": "와일드헌트",
+    "tier": 3,
+    "probability": 0.006538744
+  }
+]

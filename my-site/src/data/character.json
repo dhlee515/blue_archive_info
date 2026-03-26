@@ -1,0 +1,12 @@
+[
+  {
+    "id": "Charatcter_data_001",
+    "name": "시로코(Shiroko)",
+    "school": "아비도스 고등학교",
+    "role": "Striker",
+    "attackType": "Explosive",
+    "armorType": "LightArmor",
+    "rarity": 3,
+    "imageUrl": ""
+  }
+]
