@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { AuthUser } from '@/types/auth';
 import type { Subscription } from '@supabase/supabase-js';
 import { AuthRepository } from '@/repositories/authRepository';
+import { supabase } from '@/lib/supabase';
 
 interface AuthState {
   user: AuthUser | null;
@@ -28,8 +29,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = await AuthRepository.getCurrentUser();
       set({ user, isLoading: false });
 
-      const subscription = AuthRepository.onAuthStateChange((user) => {
-        set({ user });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: { user?: { id: string } } | null) => {
+        if (event === 'SIGNED_OUT') {
+          set({ user: null });
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          // 로그인 시에만 프로필 조회
+          AuthRepository.getCurrentUser().then((u) => {
+            if (u) set({ user: u });
+          });
+        }
+        // TOKEN_REFRESHED 등 다른 이벤트는 무시 — 기존 user 유지
       });
 
       set({ _subscription: subscription });
