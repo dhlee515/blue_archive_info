@@ -71,12 +71,11 @@ export class GuideRepository {
 
     if (error) throw error;
 
-    // insert 후 방금 생성된 글을 조회
+    // insert 후 방금 생성된 글의 id 조회
     const { data: latest } = await supabase
       .from('guides')
       .select('id')
       .eq('author_id', userId)
-      .eq('title', formData.title)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -85,7 +84,7 @@ export class GuideRepository {
     const guideId = (latest?.id as string) ?? '';
     if (guideId) await GuideRepository.insertLog(guideId, userId, 'create');
 
-    return guideId ? GuideRepository.getGuideById(guideId) : ({} as Guide);
+    return { id: guideId } as Guide;
   }
 
   /**
@@ -116,7 +115,7 @@ export class GuideRepository {
 
     await GuideRepository.insertLog(id, userId, 'update');
 
-    return GuideRepository.getGuideById(id);
+    return { id } as Guide;
   }
 
   /**
