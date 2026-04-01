@@ -21,7 +21,7 @@ export class GuideRepository {
   static async getGuides(categoryId?: string): Promise<Guide[]> {
     let query = supabase
       .from('guides')
-      .select('*, profiles(nickname, role)')
+      .select('*')
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
@@ -32,7 +32,19 @@ export class GuideRepository {
     const { data, error } = await query;
     if (error) throw error;
 
-    return (data ?? []).map(GuideRepository.toGuide);
+    const rows = data ?? [];
+    const authorIds = [...new Set(rows.map((r) => r.author_id as string))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, nickname, role')
+      .in('id', authorIds);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    return rows.map((row) => {
+      const profile = profileMap.get(row.author_id as string);
+      return GuideRepository.toGuide({ ...row, profiles: profile ?? null });
+    });
   }
 
   /**
@@ -41,13 +53,20 @@ export class GuideRepository {
   static async getGuideById(id: string): Promise<Guide> {
     const { data, error } = await supabase
       .from('guides')
-      .select('*, profiles(nickname, role)')
+      .select('*')
       .eq('id', id)
       .single();
 
     if (error || !data) throw new AppError('가이드를 찾을 수 없습니다.', 'NOT_FOUND');
 
-    return GuideRepository.toGuide(data);
+    // 프로필 별도 조회
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('nickname, role')
+      .eq('id', data.author_id)
+      .single();
+
+    return GuideRepository.toGuide({ ...data, profiles: profile });
   }
 
   /**
@@ -138,13 +157,25 @@ export class GuideRepository {
   static async getDeletedGuides(): Promise<Guide[]> {
     const { data, error } = await supabase
       .from('guides')
-      .select('*, profiles(nickname, role)')
+      .select('*')
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
 
     if (error) throw error;
 
-    return (data ?? []).map(GuideRepository.toGuide);
+    const rows = data ?? [];
+    const authorIds = [...new Set(rows.map((r) => r.author_id as string))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, nickname, role')
+      .in('id', authorIds);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    return rows.map((row) => {
+      const profile = profileMap.get(row.author_id as string);
+      return GuideRepository.toGuide({ ...row, profiles: profile ?? null });
+    });
   }
 
   /**
