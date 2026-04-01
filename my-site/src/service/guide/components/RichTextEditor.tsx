@@ -21,7 +21,15 @@ export default function RichTextEditor({ content, onChange }: Props) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        link: {
+          openOnClick: false,
+          HTMLAttributes: {
+            target: '_blank',
+            rel: 'noopener noreferrer',
+          },
+        },
+      }),
       Image,
       TextStyle,
       Color,
@@ -32,6 +40,13 @@ export default function RichTextEditor({ content, onChange }: Props) {
     editorProps: {
       attributes: {
         class: 'tiptap-editor',
+      },
+      handleClick: (_view, _pos, event) => {
+        if ((event.target as HTMLElement).closest('a')) {
+          event.preventDefault();
+          return true;
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
