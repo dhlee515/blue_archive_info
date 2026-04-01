@@ -2,6 +2,18 @@ import type { Guide, GuideFormData, GuideLog } from '@/types/guide';
 import { supabase } from '@/lib/supabase';
 import { AppError } from '@/utils/AppError';
 
+function encodeContent(html: string): string {
+  return btoa(unescape(encodeURIComponent(html)));
+}
+
+function decodeContent(encoded: string): string {
+  try {
+    return decodeURIComponent(escape(atob(encoded)));
+  } catch {
+    return encoded;
+  }
+}
+
 export class GuideRepository {
   /**
    * 가이드 목록을 가져옵니다. 카테고리 필터 선택 가능.
@@ -52,7 +64,7 @@ export class GuideRepository {
       .insert({
         title: formData.title,
         category_id: formData.categoryId,
-        content: formData.content,
+        content: encodeContent(formData.content),
         image_url: imageUrl,
         author_id: userId,
       });
@@ -95,7 +107,7 @@ export class GuideRepository {
       .update({
         title: formData.title,
         category_id: formData.categoryId,
-        content: formData.content,
+        content: encodeContent(formData.content),
         image_url: imageUrl,
       })
       .eq('id', id);
@@ -218,7 +230,7 @@ export class GuideRepository {
       id: row.id as string,
       title: row.title as string,
       categoryId: row.category_id as string,
-      content: row.content as string,
+      content: decodeContent(row.content as string),
       imageUrl: (row.image_url as string) || null,
       authorId: row.author_id as string,
       authorNickname: profiles?.nickname ?? '',
