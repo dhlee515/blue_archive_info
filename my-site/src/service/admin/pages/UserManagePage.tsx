@@ -92,16 +92,16 @@ export default function UserManagePage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-extrabold text-blue-900 mb-6 tracking-tight">유저 관리</h1>
+      <h1 className="text-2xl md:text-3xl font-extrabold text-blue-900 mb-4 md:mb-6 tracking-tight">유저 관리</h1>
 
       {/* 승인 대기 */}
       {pendingUsers.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-yellow-700 mb-3">
+        <div className="mb-6 md:mb-8">
+          <h2 className="text-base md:text-lg font-bold text-yellow-700 mb-3">
             승인 대기 ({pendingUsers.length}명)
           </h2>
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl overflow-hidden">
-            <UserTable
+            <UserList
               users={pendingUsers}
               updatingId={updatingId}
               onRoleChange={handleRoleChange}
@@ -112,13 +112,13 @@ export default function UserManagePage() {
       )}
 
       {/* 활성 유저 */}
-      <div className="mb-8">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">
+      <div className="mb-6 md:mb-8">
+        <h2 className="text-base md:text-lg font-bold text-gray-800 mb-3">
           활성 유저 ({activeUsers.length}명)
         </h2>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {activeUsers.length > 0 ? (
-            <UserTable
+            <UserList
               users={activeUsers}
               updatingId={updatingId}
               onRoleChange={handleRoleChange}
@@ -133,38 +133,25 @@ export default function UserManagePage() {
       {/* 비활성화된 유저 */}
       {deactivatedUsers.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-400 mb-3">
+          <h2 className="text-base md:text-lg font-bold text-gray-400 mb-3">
             비활성화된 유저 ({deactivatedUsers.length}명)
           </h2>
           <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-100 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-bold text-gray-500">닉네임</th>
-                    <th className="text-left px-4 py-3 font-bold text-gray-500">역할</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500">복원</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deactivatedUsers.map((user) => (
-                    <tr key={user.id} className="bg-gray-50">
-                      <td className="px-4 py-2.5 text-gray-400">{user.nickname}</td>
-                      <td className="px-4 py-2.5 text-gray-400">{ROLE_LABELS[user.role]}</td>
-                      <td className="px-4 py-2.5 text-right">
-                        <button
-                          onClick={() => handleReactivate(user.id)}
-                          disabled={updatingId === user.id}
-                          className="px-3 py-1 bg-green-50 hover:bg-green-100 text-green-600 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          복원
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {deactivatedUsers.map((user) => (
+              <div key={user.id} className="flex items-center justify-between px-3 md:px-4 py-2.5 md:py-3 border-b border-gray-200 last:border-b-0">
+                <div>
+                  <span className="text-gray-400 text-sm">{user.nickname}</span>
+                  <span className="text-gray-400 text-xs ml-2">{ROLE_LABELS[user.role]}</span>
+                </div>
+                <button
+                  onClick={() => handleReactivate(user.id)}
+                  disabled={updatingId === user.id}
+                  className="px-2 md:px-3 py-1 bg-green-50 hover:bg-green-100 text-green-600 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  복원
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -172,7 +159,7 @@ export default function UserManagePage() {
   );
 }
 
-function UserTable({
+function UserList({
   users,
   updatingId,
   onRoleChange,
@@ -184,58 +171,49 @@ function UserTable({
   onDeactivate: (userId: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th className="text-left px-4 py-3 font-bold text-gray-600">닉네임</th>
-            <th className="text-left px-4 py-3 font-bold text-gray-600">현재 역할</th>
-            <th className="text-left px-4 py-3 font-bold text-gray-600">가입일</th>
-            <th className="text-right px-4 py-3 font-bold text-gray-600">역할 변경</th>
-            <th className="text-right px-4 py-3 font-bold text-gray-600"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user, idx) => (
-            <tr
-              key={user.id}
-              className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+    <div>
+      {users.map((user, idx) => (
+        <div
+          key={user.id}
+          className={`px-3 md:px-4 py-2.5 md:py-3 ${idx !== users.length - 1 ? 'border-b border-gray-100' : ''}`}
+        >
+          {/* 1줄: 닉네임 + 역할 배지 + 가입일 */}
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-gray-800 text-sm md:text-base">{user.nickname}</span>
+            <span className={`px-1.5 md:px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[user.role]}`}>
+              {ROLE_LABELS[user.role]}
+            </span>
+            <span className="text-xs text-gray-400 hidden md:inline">
+              {new Date(user.createdAt).toLocaleDateString('ko-KR')}
+            </span>
+          </div>
+          {/* 2줄: 가입일(모바일) + 역할 변경 + 비활성화 */}
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-xs text-gray-400 md:hidden">
+              {new Date(user.createdAt).toLocaleDateString('ko-KR')}
+            </span>
+            <div className="flex-1" />
+            <select
+              value={user.role}
+              onChange={(e) => onRoleChange(user.id, e.target.value as UserRole)}
+              disabled={updatingId === user.id}
+              className="p-1 md:p-1.5 border border-gray-300 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white disabled:opacity-50"
             >
-              <td className="px-4 py-2.5 font-medium text-gray-800">{user.nickname}</td>
-              <td className="px-4 py-2.5">
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[user.role]}`}>
-                  {ROLE_LABELS[user.role]}
-                </span>
-              </td>
-              <td className="px-4 py-2.5 text-gray-500">
-                {new Date(user.createdAt).toLocaleDateString('ko-KR')}
-              </td>
-              <td className="px-4 py-2.5 text-right">
-                <select
-                  value={user.role}
-                  onChange={(e) => onRoleChange(user.id, e.target.value as UserRole)}
-                  disabled={updatingId === user.id}
-                  className="p-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white disabled:opacity-50"
-                >
-                  <option value="pending">승인 대기</option>
-                  <option value="user">사용자</option>
-                  <option value="editor">부관리자</option>
-                  <option value="admin">관리자</option>
-                </select>
-              </td>
-              <td className="px-4 py-2.5 text-right">
-                <button
-                  onClick={() => onDeactivate(user.id)}
-                  disabled={updatingId === user.id}
-                  className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-                >
-                  비활성화
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              <option value="pending">승인 대기</option>
+              <option value="user">사용자</option>
+              <option value="editor">부관리자</option>
+              <option value="admin">관리자</option>
+            </select>
+            <button
+              onClick={() => onDeactivate(user.id)}
+              disabled={updatingId === user.id}
+              className="px-2 md:px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              비활성화
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
