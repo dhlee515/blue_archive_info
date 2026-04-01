@@ -13,10 +13,6 @@ export default function MyPage() {
   const user = useAuthStore((s) => s.user);
   const initialize = useAuthStore((s) => s.initialize);
 
-  const [email, setEmail] = useState(user?.email ?? '');
-  const [emailSaving, setEmailSaving] = useState(false);
-  const [emailMsg, setEmailMsg] = useState('');
-
   const [nickname, setNickname] = useState(user?.nickname ?? '');
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [nicknameMsg, setNicknameMsg] = useState('');
@@ -28,20 +24,6 @@ export default function MyPage() {
   const [passwordMsg, setPasswordMsg] = useState('');
 
   if (!user) return null;
-
-  const handleEmailChange = async () => {
-    if (!email.trim()) return;
-    setEmailSaving(true);
-    setEmailMsg('');
-    try {
-      await AuthRepository.updateEmail(email.trim());
-      setEmailMsg('이메일이 변경되었습니다.');
-    } catch {
-      setEmailMsg('이메일 변경에 실패했습니다.');
-    } finally {
-      setEmailSaving(false);
-    }
-  };
 
   const handleNicknameChange = async () => {
     if (!nickname.trim()) return;
@@ -91,35 +73,14 @@ export default function MyPage() {
         <h2 className="text-lg font-bold text-gray-800 mb-4">프로필 정보</h2>
         <div className="flex flex-col gap-3 text-sm">
           <div className="flex justify-between">
+            <span className="text-gray-500">이메일</span>
+            <span className="text-gray-800">{user.email}</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-gray-500">역할</span>
             <span className="text-gray-800">{ROLE_LABELS[user.role] ?? user.role}</span>
           </div>
         </div>
-      </div>
-
-      {/* 이메일 변경 */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">이메일 변경</h2>
-        <div className="flex gap-2">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="flex-1 p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          />
-          <button
-            onClick={handleEmailChange}
-            disabled={emailSaving || !email.trim() || email === user.email}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-2.5 px-5 rounded-lg transition-colors"
-          >
-            {emailSaving ? '저장 중...' : '변경'}
-          </button>
-        </div>
-        {emailMsg && (
-          <p className={`text-sm mt-2 ${emailMsg.includes('실패') ? 'text-red-500' : 'text-green-500'}`}>
-            {emailMsg}
-          </p>
-        )}
       </div>
 
       {/* 닉네임 변경 */}

@@ -98,16 +98,51 @@ export class AuthRepository {
    * 이메일을 변경합니다.
    */
   static async updateEmail(newEmail: string): Promise<void> {
-    const { error } = await supabase.auth.updateUser({ email: newEmail });
-    if (error) throw error;
+    const session = await AuthRepository.getSessionToken();
+    if (!session) throw new Error('로그인이 필요합니다.');
+
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email: newEmail }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.msg || '이메일 변경에 실패했습니다.');
+    }
   }
 
   /**
    * 비밀번호를 변경합니다.
    */
   static async updatePassword(newPassword: string): Promise<void> {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) throw error;
+    const session = await AuthRepository.getSessionToken();
+    if (!session) throw new Error('로그인이 필요합니다.');
+
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ password: newPassword }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.msg || '비밀번호 변경에 실패했습니다.');
+    }
+  }
+
+  private static async getSessionToken(): Promise<string | null> {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
   }
 
   /**
