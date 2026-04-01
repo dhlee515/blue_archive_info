@@ -83,6 +83,34 @@ export class AuthRepository {
   }
 
   /**
+   * 닉네임을 변경합니다.
+   */
+  static async updateNickname(userId: string, nickname: string): Promise<void> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ nickname })
+      .eq('id', userId);
+
+    if (error) throw error;
+  }
+
+  /**
+   * 이메일을 변경합니다.
+   */
+  static async updateEmail(newEmail: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) throw error;
+  }
+
+  /**
+   * 비밀번호를 변경합니다.
+   */
+  static async updatePassword(newPassword: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }
+
+  /**
    * 유저를 비활성화합니다. (soft delete, 관리자용)
    */
   static async deactivateUser(userId: string): Promise<void> {

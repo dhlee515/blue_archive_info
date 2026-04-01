@@ -9,6 +9,7 @@ import GuideListPage from '@/service/guide/pages/GuideListPage';
 import GuideDetailPage from '@/service/guide/pages/GuideDetailPage';
 import LoginPage from '@/service/auth/pages/LoginPage';
 import SignUpPage from '@/service/auth/pages/SignUpPage';
+import MyPage from '@/service/auth/pages/MyPage';
 import UserManagePage from '@/service/admin/pages/UserManagePage';
 import CategoryManagePage from '@/service/admin/pages/CategoryManagePage';
 import GuideLogPage from '@/service/admin/pages/GuideLogPage';
@@ -62,6 +63,10 @@ export const router = createBrowserRouter([
       {
         path: 'signup',
         element: <SignUpPage />,
+      },
+      {
+        path: 'mypage',
+        element: <MyPage />,
       },
       {
         path: 'admin/users',

@@ -26,7 +26,54 @@ export default function Sidebar({ isOpen, onClose }: Props) {
 
   const navContent = (
     <div className="p-4 flex flex-col gap-2 h-full">
-      <h2 className="text-sm font-bold text-gray-400 uppercase mb-2 px-2">메뉴</h2>
+      {/* 상단: 로그인/로그아웃, 마이페이지, 유저 관리 */}
+      <div className="flex flex-col gap-1 pb-3 border-b border-gray-200 mb-1">
+        {user ? (
+          <>
+            {user.role === 'admin' && (
+              <Link
+                to="/admin/users"
+                onClick={onClose}
+                className={`px-4 py-2 rounded-md font-medium transition-colors block ${
+                  location.pathname === '/admin/users'
+                    ? 'bg-red-50 text-red-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                유저 관리
+              </Link>
+            )}
+            <Link
+              to="/mypage"
+              onClick={onClose}
+              className={`px-4 py-2 rounded-md font-medium transition-colors block ${
+                location.pathname === '/mypage'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              마이페이지
+            </Link>
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 text-left rounded-md font-medium text-red-600 hover:bg-red-50 transition-colors"
+            >
+              로그아웃
+            </button>
+          </>
+        ) : (
+          <Link
+            to="/login"
+            onClick={onClose}
+            className="px-4 py-2 rounded-md font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors block"
+          >
+            로그인
+          </Link>
+        )}
+      </div>
+
+      {/* 하단: 메뉴 */}
+      <h2 className="text-sm font-bold text-gray-400 uppercase mb-1 px-2">메뉴</h2>
       {navLinks.map((link) => {
         const isActive = location.pathname === link.path || location.pathname.startsWith(link.path + '/');
         return (
@@ -46,43 +93,6 @@ export default function Sidebar({ isOpen, onClose }: Props) {
           </Link>
         );
       })}
-
-      <div className="mt-auto pt-4 border-t border-gray-200">
-        {user?.role === 'admin' && (
-          <>
-            <Link
-              to="/admin/users"
-              onClick={onClose}
-              className={`px-4 py-2 rounded-md font-medium transition-colors block mb-1 ${
-                location.pathname === '/admin/users'
-                  ? 'bg-red-50 text-red-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              유저 관리
-            </Link>
-          </>
-        )}
-        {user ? (
-          <div className="flex flex-col gap-2">
-            <span className="px-4 text-xs text-gray-400 truncate">{user.nickname || user.email}</span>
-            <button
-              onClick={handleSignOut}
-              className="px-4 py-2 text-left rounded-md font-medium text-red-600 hover:bg-red-50 transition-colors"
-            >
-              로그아웃
-            </button>
-          </div>
-        ) : (
-          <Link
-            to="/login"
-            onClick={onClose}
-            className="px-4 py-2 rounded-md font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors block"
-          >
-            로그인
-          </Link>
-        )}
-      </div>
     </div>
   );
 
