@@ -37,8 +37,10 @@ export default function GuideFormPage() {
           setContent(guide.content);
           setIsInternal(guide.isInternal);
           setImagePreview(guide.imageUrl);
-        } else if (cats.length > 0) {
-          setCategoryId(cats[0].id);
+        } else {
+          const paramCategory = searchParams.get('category');
+          const matched = paramCategory ? cats.find((c) => c.id === paramCategory) : null;
+          setCategoryId(matched ? matched.id : cats[0]?.id ?? '');
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);

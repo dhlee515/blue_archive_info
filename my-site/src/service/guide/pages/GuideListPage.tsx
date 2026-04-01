@@ -62,7 +62,7 @@ export default function GuideListPage() {
           )}
           {canEdit() && (
             <Link
-              to="/guide/new"
+              to={`/guide/new${selectedCategoryId !== 'all' ? `?category=${selectedCategoryId}` : ''}`}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors text-xs md:text-sm"
             >
               글 작성
