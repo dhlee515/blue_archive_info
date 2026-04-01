@@ -10,3 +10,5 @@ export type {
   StudentSkill,
 } from './student';
 export type { CraftingNode, CraftingItem } from './crafting';
+export type { Guide, GuideFormData, Category, GuideLog } from './guide';
+export type { AuthUser, UserRole, UserProfile } from './auth';

@@ -28,16 +28,16 @@ export default function HomePage() {
           </p>
         </Link>
         
-        <Link 
-          to="/guide/nub-info" 
+        <Link
+          to="/guide"
           className="group p-6 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-amber-300 transition-all text-center"
         >
           <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
             🔰
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 group-hover:text-amber-600">뉴비 가이드</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2 group-hover:text-amber-600">정보글</h2>
           <p className="text-gray-500">
-            초보 선생님을 위한 기본 가이드와 팁을 제공합니다.
+            블루아카이브 공략과 정보를 확인하세요.
           </p>
         </Link>
         

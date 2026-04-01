@@ -1,10 +1,22 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router';
 import MainLayout from '@/components/layouts/MainLayout';
 import HomePage from '@/service/home/pages/HomePage';
 import StudentListPage from '@/service/student/pages/StudentListPage';
-import NubInfoPage from '@/service/guide/pages/NubInfoPage';
 import EligmaCalcPage from '@/service/calculator/pages/EligmaCalcPage';
 import CraftingCalcPage from '@/service/calculator/pages/CraftingCalcPage';
+import GuideListPage from '@/service/guide/pages/GuideListPage';
+import GuideDetailPage from '@/service/guide/pages/GuideDetailPage';
+import LoginPage from '@/service/auth/pages/LoginPage';
+import SignUpPage from '@/service/auth/pages/SignUpPage';
+import UserManagePage from '@/service/admin/pages/UserManagePage';
+import CategoryManagePage from '@/service/admin/pages/CategoryManagePage';
+import GuideLogPage from '@/service/admin/pages/GuideLogPage';
+import DeletedGuidesPage from '@/service/admin/pages/DeletedGuidesPage';
+import AdminRoute, { EditorRoute } from '@/components/guards/AdminRoute';
+
+const GuideFormPage = lazy(() => import('@/service/guide/pages/GuideFormPage'));
+const LazyGuideForm = () => <Suspense fallback={<div className="text-center py-12 text-gray-400">로딩 중...</div>}><GuideFormPage /></Suspense>;
 
 export const router = createBrowserRouter([
   {
@@ -20,8 +32,20 @@ export const router = createBrowserRouter([
         element: <StudentListPage />,
       },
       {
-        path: 'guide/nub-info',
-        element: <NubInfoPage />,
+        path: 'guide',
+        element: <GuideListPage />,
+      },
+      {
+        path: 'guide/new',
+        element: <EditorRoute><LazyGuideForm /></EditorRoute>,
+      },
+      {
+        path: 'guide/:id',
+        element: <GuideDetailPage />,
+      },
+      {
+        path: 'guide/:id/edit',
+        element: <EditorRoute><LazyGuideForm /></EditorRoute>,
       },
       {
         path: 'calculator/eligma',
@@ -30,6 +54,30 @@ export const router = createBrowserRouter([
       {
         path: 'calculator/crafting',
         element: <CraftingCalcPage />,
+      },
+      {
+        path: 'login',
+        element: <LoginPage />,
+      },
+      {
+        path: 'signup',
+        element: <SignUpPage />,
+      },
+      {
+        path: 'admin/users',
+        element: <AdminRoute><UserManagePage /></AdminRoute>,
+      },
+      {
+        path: 'admin/categories',
+        element: <AdminRoute><CategoryManagePage /></AdminRoute>,
+      },
+      {
+        path: 'admin/guide-logs/:id',
+        element: <AdminRoute><GuideLogPage /></AdminRoute>,
+      },
+      {
+        path: 'admin/deleted-guides',
+        element: <AdminRoute><DeletedGuidesPage /></AdminRoute>,
       },
     ],
   },

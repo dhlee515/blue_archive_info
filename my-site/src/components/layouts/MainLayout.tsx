@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router';
 import Header from '../Header/Header';
 import Sidebar from '../navigation/Sidebar';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function MainLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const initialize = useAuthStore((s) => s.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col">
