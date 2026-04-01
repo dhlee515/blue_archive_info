@@ -164,17 +164,14 @@ export default function CategoryManagePage() {
     const newIndex = categories.findIndex((c) => c.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const a = categories[oldIndex];
-    const b = categories[newIndex];
-
     // 낙관적 UI 업데이트
     const newCategories = [...categories];
-    newCategories.splice(oldIndex, 1);
-    newCategories.splice(newIndex, 0, a);
+    const [moved] = newCategories.splice(oldIndex, 1);
+    newCategories.splice(newIndex, 0, moved);
     setCategories(newCategories);
 
     try {
-      await CategoryRepository.swapOrder(a.id, a.sortOrder, b.id, b.sortOrder);
+      await CategoryRepository.reorder(newCategories.map((c) => c.id));
       await fetchCategories();
     } catch (error) {
       console.error('Failed to reorder:', error);

@@ -50,22 +50,17 @@ export class CategoryRepository {
   }
 
   /**
-   * 카테고리 순서를 변경합니다. (관리자용)
+   * 카테고리 순서를 일괄 업데이트합니다. (관리자용)
    */
-  static async swapOrder(idA: string, orderA: number, idB: string, orderB: number): Promise<void> {
-    const { error: err1 } = await supabase
-      .from('categories')
-      .update({ sort_order: orderB })
-      .eq('id', idA);
+  static async reorder(orderedIds: string[]): Promise<void> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      const { error } = await supabase
+        .from('categories')
+        .update({ sort_order: i })
+        .eq('id', orderedIds[i]);
 
-    if (err1) throw err1;
-
-    const { error: err2 } = await supabase
-      .from('categories')
-      .update({ sort_order: orderA })
-      .eq('id', idB);
-
-    if (err2) throw err2;
+      if (error) throw error;
+    }
   }
 
   /**
