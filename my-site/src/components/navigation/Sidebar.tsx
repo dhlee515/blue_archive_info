@@ -43,6 +43,19 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                 유저 관리
               </Link>
             )}
+            {(user.role === 'admin' || user.role === 'editor') && (
+              <Link
+                to="/admin/notices"
+                onClick={onClose}
+                className={`px-4 py-2 rounded-md font-medium transition-colors block ${
+                  location.pathname === '/admin/notices'
+                    ? 'bg-yellow-50 text-yellow-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                내부 공지
+              </Link>
+            )}
             <Link
               to="/mypage"
               onClick={onClose}

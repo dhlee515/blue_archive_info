@@ -68,11 +68,12 @@ export class GuideRepository {
   /**
    * 가이드 목록을 가져옵니다.
    */
-  static async getGuides(categoryId?: string): Promise<Guide[]> {
+  static async getGuides(categoryId?: string, isInternal: boolean = false): Promise<Guide[]> {
     let query = supabase
       .from('guides')
       .select('*')
       .is('deleted_at', null)
+      .eq('is_internal', isInternal)
       .order('created_at', { ascending: false });
 
     if (categoryId) {
@@ -133,6 +134,7 @@ export class GuideRepository {
       content: encodeContent(formData.content),
       image_url: imageUrl,
       author_id: userId,
+      is_internal: formData.isInternal,
     });
 
     // insert 후 방금 생성된 글의 id 조회
@@ -170,6 +172,7 @@ export class GuideRepository {
       category_id: formData.categoryId,
       content: encodeContent(formData.content),
       image_url: imageUrl,
+      is_internal: formData.isInternal,
     }, `id=eq.${id}`);
 
     await GuideRepository.insertLog(id, userId, 'update');
@@ -290,6 +293,7 @@ export class GuideRepository {
       authorId: row.author_id as string,
       authorNickname: profiles?.nickname ?? '',
       authorRole: profiles?.role ?? '',
+      isInternal: (row.is_internal as boolean) ?? false,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
     };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import type { Category } from '@/types/guide';
 import { GuideRepository } from '@/repositories/guideRepository';
 import { CategoryRepository } from '@/repositories/categoryRepository';
@@ -9,12 +9,15 @@ import RichTextEditor from '../components/RichTextEditor';
 export default function GuideFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
   const user = useAuthStore((s) => s.user);
+  const canEdit = useAuthStore((s) => s.canEdit);
 
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [content, setContent] = useState('');
+  const [isInternal, setIsInternal] = useState(searchParams.get('internal') === 'true');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,6 +35,7 @@ export default function GuideFormPage() {
           setTitle(guide.title);
           setCategoryId(guide.categoryId);
           setContent(guide.content);
+          setIsInternal(guide.isInternal);
           setImagePreview(guide.imageUrl);
         } else if (cats.length > 0) {
           setCategoryId(cats[0].id);
@@ -64,7 +68,7 @@ export default function GuideFormPage() {
 
     try {
       if (!user) throw new Error('로그인이 필요합니다.');
-      const formData = { title, categoryId, content, imageFile };
+      const formData = { title, categoryId, content, imageFile, isInternal };
 
       if (isEdit && id) {
         await GuideRepository.updateGuide(id, formData, user.id);

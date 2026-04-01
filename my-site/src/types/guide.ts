@@ -17,6 +17,7 @@ export interface Guide {
   authorId: string;
   authorNickname: string;
   authorRole: string;
+  isInternal: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,4 +38,5 @@ export interface GuideFormData {
   categoryId: string;
   content: string;
   imageFile: File | null;
+  isInternal: boolean;
 }
