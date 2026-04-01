@@ -17,7 +17,6 @@ export default function MyPage() {
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [nicknameMsg, setNicknameMsg] = useState('');
 
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -53,7 +52,6 @@ export default function MyPage() {
     setPasswordSaving(true);
     try {
       await AuthRepository.updatePassword(newPassword);
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setPasswordMsg('비밀번호가 변경되었습니다.');

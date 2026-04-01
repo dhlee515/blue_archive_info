@@ -6,11 +6,9 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default function MainLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const initialize = useAuthStore((s) => s.initialize);
-
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    useAuthStore.getState().initialize();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col">

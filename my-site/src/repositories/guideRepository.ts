@@ -2,21 +2,71 @@ import type { Guide, GuideFormData, GuideLog } from '@/types/guide';
 import { supabase } from '@/lib/supabase';
 import { AppError } from '@/utils/AppError';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 function encodeContent(html: string): string {
-  return btoa(unescape(encodeURIComponent(html)));
+  const bytes = new TextEncoder().encode(html);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
 function decodeContent(encoded: string): string {
   try {
-    return decodeURIComponent(escape(atob(encoded)));
+    const binary = atob(encoded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
   } catch {
     return encoded;
   }
 }
 
+async function getAccessToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? SUPABASE_KEY;
+}
+
+async function restPost(table: string, body: Record<string, unknown>): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_KEY,
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `${table} insert 실패`);
+  }
+}
+
+async function restPatch(table: string, body: Record<string, unknown>, filter: string): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_KEY,
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `${table} update 실패`);
+  }
+}
+
 export class GuideRepository {
   /**
-   * 가이드 목록을 가져옵니다. 카테고리 필터 선택 가능.
+   * 가이드 목록을 가져옵니다.
    */
   static async getGuides(categoryId?: string): Promise<Guide[]> {
     let query = supabase
@@ -59,7 +109,6 @@ export class GuideRepository {
 
     if (error || !data) throw new AppError('가이드를 찾을 수 없습니다.', 'NOT_FOUND');
 
-    // 프로필 별도 조회
     const { data: profile } = await supabase
       .from('profiles')
       .select('nickname, role')
@@ -78,17 +127,13 @@ export class GuideRepository {
       imageUrl = await GuideRepository.uploadImage(formData.imageFile);
     }
 
-    const { error } = await supabase
-      .from('guides')
-      .insert({
-        title: formData.title,
-        category_id: formData.categoryId,
-        content: encodeContent(formData.content),
-        image_url: imageUrl,
-        author_id: userId,
-      });
-
-    if (error) throw error;
+    await restPost('guides', {
+      title: formData.title,
+      category_id: formData.categoryId,
+      content: encodeContent(formData.content),
+      image_url: imageUrl,
+      author_id: userId,
+    });
 
     // insert 후 방금 생성된 글의 id 조회
     const { data: latest } = await supabase
@@ -120,17 +165,12 @@ export class GuideRepository {
       imageUrl = await GuideRepository.uploadImage(formData.imageFile);
     }
 
-    const { error } = await supabase
-      .from('guides')
-      .update({
-        title: formData.title,
-        category_id: formData.categoryId,
-        content: encodeContent(formData.content),
-        image_url: imageUrl,
-      })
-      .eq('id', id);
-
-    if (error) throw error;
+    await restPatch('guides', {
+      title: formData.title,
+      category_id: formData.categoryId,
+      content: encodeContent(formData.content),
+      image_url: imageUrl,
+    }, `id=eq.${id}`);
 
     await GuideRepository.insertLog(id, userId, 'update');
 
@@ -141,13 +181,7 @@ export class GuideRepository {
    * 가이드를 삭제합니다. (soft delete)
    */
   static async deleteGuide(id: string, userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('guides')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id);
-
-    if (error) throw error;
-
+    await restPatch('guides', { deleted_at: new Date().toISOString() }, `id=eq.${id}`);
     await GuideRepository.insertLog(id, userId, 'delete');
   }
 
@@ -182,13 +216,7 @@ export class GuideRepository {
    * 삭제된 글을 복원합니다. (관리자용)
    */
   static async restoreGuide(id: string, userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('guides')
-      .update({ deleted_at: null })
-      .eq('id', id);
-
-    if (error) throw error;
-
+    await restPatch('guides', { deleted_at: null }, `id=eq.${id}`);
     await GuideRepository.insertLog(id, userId, 'restore');
   }
 
@@ -219,10 +247,7 @@ export class GuideRepository {
 
   private static async insertLog(guideId: string, editorId: string, action: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('guide_logs')
-        .insert({ guide_id: guideId, editor_id: editorId, action });
-      if (error) console.error('Failed to insert log:', error);
+      await restPost('guide_logs', { guide_id: guideId, editor_id: editorId, action });
     } catch (e) {
       console.error('Failed to insert log:', e);
     }

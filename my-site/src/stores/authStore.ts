@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import type { AuthUser } from '@/types/auth';
+import type { Subscription } from '@supabase/supabase-js';
 import { AuthRepository } from '@/repositories/authRepository';
 
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
+  _subscription: Subscription | null;
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, nickname: string) => Promise<void>;
@@ -16,15 +18,21 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isLoading: true,
+  _subscription: null,
 
   initialize: async () => {
+    // 중복 초기화 방지
+    if (get()._subscription !== null) return;
+
     try {
       const user = await AuthRepository.getCurrentUser();
       set({ user, isLoading: false });
 
-      AuthRepository.onAuthStateChange((user) => {
+      const subscription = AuthRepository.onAuthStateChange((user) => {
         set({ user });
       });
+
+      set({ _subscription: subscription });
     } catch {
       set({ user: null, isLoading: false });
     }

@@ -44,7 +44,8 @@ export default function GuideFormPage() {
       }
     }
     fetchData();
-  }, [id, navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;

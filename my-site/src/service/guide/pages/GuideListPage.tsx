@@ -9,6 +9,7 @@ export default function GuideListPage() {
   const [guides, setGuides] = useState<Guide[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
   const user = useAuthStore((s) => s.user);
   const canEdit = useAuthStore((s) => s.canEdit);
@@ -155,13 +156,22 @@ export default function GuideListPage() {
                   </Link>
                   <button
                     onClick={async () => {
-                      if (!confirm('정말 삭제하시겠습니까?')) return;
-                      await GuideRepository.deleteGuide(guide.id, user!.id);
-                      setGuides((prev) => prev.filter((g) => g.id !== guide.id));
+                      if (!user || !confirm('정말 삭제하시겠습니까?')) return;
+                      setDeletingId(guide.id);
+                      try {
+                        await GuideRepository.deleteGuide(guide.id, user.id);
+                        setGuides((prev) => prev.filter((g) => g.id !== guide.id));
+                      } catch (error) {
+                        console.error('Failed to delete guide:', error);
+                        alert('삭제에 실패했습니다.');
+                      } finally {
+                        setDeletingId(null);
+                      }
                     }}
-                    className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded transition-colors"
+                    disabled={deletingId === guide.id}
+                    className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded transition-colors disabled:opacity-50"
                   >
-                    삭제
+                    {deletingId === guide.id ? '삭제 중' : '삭제'}
                   </button>
                     </>
                   )}

@@ -39,11 +39,11 @@ export default function GuideDetailPage() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!guide || !confirm('정말 삭제하시겠습니까?')) return;
+    if (!guide || !user || !confirm('정말 삭제하시겠습니까?')) return;
 
     setDeleting(true);
     try {
-      await GuideRepository.deleteGuide(guide.id, user!.id);
+      await GuideRepository.deleteGuide(guide.id, user.id);
       navigate('/guide');
     } catch (error) {
       console.error('Failed to delete guide:', error);
