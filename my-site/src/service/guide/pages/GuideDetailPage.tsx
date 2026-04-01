@@ -79,8 +79,8 @@ export default function GuideDetailPage() {
           <img src={guide.imageUrl} alt={guide.title} className="w-full max-h-80 object-cover" />
         )}
 
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="p-4 md:p-6">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             {categoryName && (
               <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium">
                 {categoryName}
@@ -107,7 +107,7 @@ export default function GuideDetailPage() {
             )}
           </div>
 
-          <h1 className="text-2xl font-extrabold text-gray-900 mb-6">{guide.title}</h1>
+          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 mb-4 md:mb-6">{guide.title}</h1>
 
           <div
             className="tiptap-editor prose max-w-none text-gray-700"
@@ -116,10 +116,10 @@ export default function GuideDetailPage() {
         </div>
 
         {canEdit() && (isAdmin() || guide.authorRole !== 'admin') && (
-          <div className="p-6 border-t border-gray-200 flex gap-3">
+          <div className="p-4 md:p-6 border-t border-gray-200 flex flex-col md:flex-row gap-2 md:gap-3">
             <Link
               to={`/guide/${guide.id}/edit`}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors text-sm"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors text-sm text-center"
             >
               수정
             </Link>

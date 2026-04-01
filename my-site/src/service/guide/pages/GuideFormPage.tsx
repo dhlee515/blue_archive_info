@@ -91,7 +91,7 @@ export default function GuideFormPage() {
         {isEdit ? '정보글 수정' : '정보글 작성'}
       </h1>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col gap-5">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 flex flex-col gap-4 md:gap-5">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
           <input
@@ -127,19 +127,19 @@ export default function GuideFormPage() {
           <RichTextEditor content={content} onChange={setContent} />
         </div>
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-col md:flex-row gap-2 md:gap-3 pt-2">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={loading || !categoryId || !title.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
           >
             {loading ? '저장 중...' : isEdit ? '수정하기' : '작성하기'}
           </button>
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors"
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
           >
             취소
           </button>

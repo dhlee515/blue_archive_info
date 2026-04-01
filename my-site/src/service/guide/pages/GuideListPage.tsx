@@ -36,24 +36,25 @@ export default function GuideListPage() {
   }, [selectedCategoryId]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-end">
+    <div className="flex flex-col gap-4 md:gap-6">
+      {/* 헤더 */}
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold text-blue-900 tracking-tight">정보글</h1>
-          <p className="text-gray-500 mt-2">블루아카이브 공략과 정보를 확인하세요.</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-blue-900 tracking-tight">정보글</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">블루아카이브 공략과 정보를 확인하세요.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {isAdmin() && (
             <>
               <Link
                 to="/admin/deleted-guides"
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors text-xs md:text-sm"
               >
                 삭제된 글
               </Link>
               <Link
                 to="/admin/categories"
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors text-xs md:text-sm"
               >
                 카테고리 관리
               </Link>
@@ -62,7 +63,7 @@ export default function GuideListPage() {
           {canEdit() && (
             <Link
               to="/guide/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors text-xs md:text-sm"
             >
               글 작성
             </Link>
@@ -71,12 +72,12 @@ export default function GuideListPage() {
       </div>
 
       {/* 카테고리 탭 */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {categories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setSelectedCategoryId(cat.name === '전체' ? 'all' : cat.id)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
               (cat.name === '전체' && selectedCategoryId === 'all') || selectedCategoryId === cat.id
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -103,81 +104,88 @@ export default function GuideListPage() {
           return (
             <div
               key={guide.id}
-              className={`flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer border-b last:border-b-0 ${
+              className={`px-3 md:px-4 py-2.5 md:py-3 transition-colors cursor-pointer border-b last:border-b-0 ${
                 isNotice
                   ? 'bg-red-50 border-red-100 hover:bg-red-100'
                   : 'hover:bg-blue-50 border-gray-100'
               }`}
               onClick={() => navigate(`/guide/${guide.id}`)}
             >
-              {isNotice ? (
-                <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-bold whitespace-nowrap">
-                  공지
+              {/* 1줄: 카테고리 + 제목 */}
+              <div className="flex items-center gap-2">
+                {isNotice ? (
+                  <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-bold whitespace-nowrap shrink-0">
+                    공지
+                  </span>
+                ) : categoryName ? (
+                  <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-medium whitespace-nowrap shrink-0">
+                    {categoryName}
+                  </span>
+                ) : null}
+                <span className={`font-medium truncate text-sm md:text-base ${isNotice ? 'text-red-900' : 'text-gray-800'}`}>
+                  {guide.title}
                 </span>
-              ) : categoryName ? (
-                <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-medium whitespace-nowrap">
-                  {categoryName}
+              </div>
+              {/* 2줄: 작성자 + 날짜 + 버튼 */}
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`text-xs font-medium ${
+                  guide.authorRole === 'admin'
+                    ? 'text-blue-600'
+                    : guide.authorRole === 'editor'
+                      ? 'text-pink-500'
+                      : 'text-gray-400'
+                }`}>
+                  {guide.authorNickname}
                 </span>
-              ) : null}
-              <span className={`font-medium flex-1 truncate ${isNotice ? 'text-red-900' : 'text-gray-800'}`}>
-                {guide.title}
-              </span>
-              <span className={`text-xs whitespace-nowrap font-medium ${
-                guide.authorRole === 'admin'
-                  ? 'text-blue-600'
-                  : guide.authorRole === 'editor'
-                    ? 'text-pink-500'
-                    : 'text-gray-400'
-              }`}>
-                {guide.authorNickname}
-              </span>
-              <span className={`text-xs whitespace-nowrap ${isNotice ? 'text-red-400' : 'text-gray-400'}`}>
-                {new Date(guide.createdAt).toLocaleDateString('ko-KR')}
-              </span>
-              {canEdit() && (() => {
-                const canModify = isAdmin() || guide.authorRole !== 'admin';
-                return (
-                <div className="flex gap-1.5 ml-2" onClick={(e) => e.stopPropagation()}>
-                  {isAdmin() && (
-                    <Link
-                      to={`/admin/guide-logs/${guide.id}`}
-                      className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-600 text-xs font-medium rounded transition-colors"
-                    >
-                      로그
-                    </Link>
-                  )}
-                  {canModify && (
-                    <>
-                  <Link
-                    to={`/guide/${guide.id}/edit`}
-                    className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded transition-colors"
-                  >
-                    수정
-                  </Link>
-                  <button
-                    onClick={async () => {
-                      if (!user || !confirm('정말 삭제하시겠습니까?')) return;
-                      setDeletingId(guide.id);
-                      try {
-                        await GuideRepository.deleteGuide(guide.id, user.id);
-                        setGuides((prev) => prev.filter((g) => g.id !== guide.id));
-                      } catch (error) {
-                        console.error('Failed to delete guide:', error);
-                        alert('삭제에 실패했습니다.');
-                      } finally {
-                        setDeletingId(null);
-                      }
-                    }}
-                    disabled={deletingId === guide.id}
-                    className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded transition-colors disabled:opacity-50"
-                  >
-                    {deletingId === guide.id ? '삭제 중' : '삭제'}
-                  </button>
-                    </>
-                  )}
-                </div>
-                );
-              })()}
+                <span className={`text-xs ${isNotice ? 'text-red-400' : 'text-gray-400'}`}>
+                  {new Date(guide.createdAt).toLocaleDateString('ko-KR')}
+                </span>
+                <div className="flex-1" />
+                {canEdit() && (() => {
+                  const canModify = isAdmin() || guide.authorRole !== 'admin';
+                  return (
+                  <div className="flex gap-1 md:gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {isAdmin() && (
+                      <Link
+                        to={`/admin/guide-logs/${guide.id}`}
+                        className="px-1.5 md:px-2 py-0.5 md:py-1 bg-purple-50 hover:bg-purple-100 text-purple-600 text-xs font-medium rounded transition-colors"
+                      >
+                        로그
+                      </Link>
+                    )}
+                    {canModify && (
+                      <>
+                        <Link
+                          to={`/guide/${guide.id}/edit`}
+                          className="px-1.5 md:px-2 py-0.5 md:py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded transition-colors"
+                        >
+                          수정
+                        </Link>
+                        <button
+                          onClick={async () => {
+                            if (!user || !confirm('정말 삭제하시겠습니까?')) return;
+                            setDeletingId(guide.id);
+                            try {
+                              await GuideRepository.deleteGuide(guide.id, user.id);
+                              setGuides((prev) => prev.filter((g) => g.id !== guide.id));
+                            } catch (error) {
+                              console.error('Failed to delete guide:', error);
+                              alert('삭제에 실패했습니다.');
+                            } finally {
+                              setDeletingId(null);
+                            }
+                          }}
+                          disabled={deletingId === guide.id}
+                          className="px-1.5 md:px-2 py-0.5 md:py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded transition-colors disabled:opacity-50"
+                        >
+                          {deletingId === guide.id ? '삭제 중' : '삭제'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  );
+                })()}
+              </div>
             </div>
           );
         };

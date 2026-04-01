@@ -60,7 +60,27 @@
 }
 
 .tiptap-editor iframe {
+  width: 100%;
   max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
   border-radius: 0.5em;
   margin: 0.5em 0;
+}
+
+/* 모바일 */
+@media (max-width: 768px) {
+  .tiptap-editor {
+    min-height: 200px;
+    padding: 0.75rem;
+  }
+
+  .tiptap-editor h1 { font-size: 1.4em; }
+  .tiptap-editor h2 { font-size: 1.2em; }
+  .tiptap-editor h3 { font-size: 1.05em; }
+
+  .tiptap-editor pre {
+    padding: 0.5em 0.75em;
+    font-size: 0.85em;
+  }
 }

@@ -82,7 +82,7 @@ export default function RichTextEditor({ content, onChange }: Props) {
   if (!editor) return null;
 
   const btn = (active: boolean) =>
-    `px-2 py-1 rounded text-sm font-medium transition-colors ${
+    `px-2 py-1 rounded text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
       active ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600 hover:bg-gray-100'
     }`;
 
@@ -95,7 +95,7 @@ export default function RichTextEditor({ content, onChange }: Props) {
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden">
       {/* 툴바 */}
-      <div className="flex flex-wrap gap-1 p-2 bg-gray-50 border-b border-gray-200">
+      <div className="flex flex-nowrap md:flex-wrap gap-1 p-2 bg-gray-50 border-b border-gray-200 overflow-x-auto">
         {/* 텍스트 서식 */}
         <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive('bold'))}>
           <strong>B</strong>
