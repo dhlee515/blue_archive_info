@@ -8,7 +8,7 @@ interface Props {
 
 export default function Header({ isMenuOpen, onToggleMenu }: Props) {
   return (
-    <header className="bg-[#1070e3] text-white p-4 shadow-md sticky top-0 z-50 h-[64px] flex items-center">
+    <header className="bg-[#1070e3] text-white p-4 shadow-md dark:shadow-none dark:border-b dark:border-slate-700 sticky top-0 z-50 h-16 flex items-center">
       <div className="w-full px-4 flex justify-between items-center">
         <Link to="/" className="text-xl font-bold flex items-center gap-2">
           <img src={logo} alt="프라나 AI" className="h-8 w-8 object-contain" />

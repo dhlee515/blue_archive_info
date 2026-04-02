@@ -11,7 +11,7 @@ export default function MainLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 font-sans flex flex-col">
       <Header isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(!isMenuOpen)} />
       <div className="flex flex-1">
         <Sidebar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />

@@ -15,6 +15,7 @@ import CategoryManagePage from '@/service/admin/pages/CategoryManagePage';
 import GuideLogPage from '@/service/admin/pages/GuideLogPage';
 import DeletedGuidesPage from '@/service/admin/pages/DeletedGuidesPage';
 import InternalNoticePage from '@/service/admin/pages/InternalNoticePage';
+import InternalCategoryManagePage from '@/service/admin/pages/InternalCategoryManagePage';
 import AdminRoute, { EditorRoute } from '@/components/guards/AdminRoute';
 
 const GuideFormPage = lazy(() => import('@/service/guide/pages/GuideFormPage'));
@@ -88,6 +89,10 @@ export const router = createBrowserRouter([
       {
         path: 'admin/notices',
         element: <EditorRoute><InternalNoticePage /></EditorRoute>,
+      },
+      {
+        path: 'admin/internal-categories',
+        element: <AdminRoute><InternalCategoryManagePage /></AdminRoute>,
       },
     ],
   },

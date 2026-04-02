@@ -27,7 +27,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   const navContent = (
     <div className="p-4 flex flex-col gap-2 h-full">
       {/* 상단: 로그인/로그아웃, 마이페이지, 유저 관리 */}
-      <div className="flex flex-col gap-1 pb-3 border-b border-gray-200 mb-1">
+      <div className="flex flex-col gap-1 pb-3 border-b border-gray-200 dark:border-slate-700 mb-1">
         {user ? (
           <>
             {user.role === 'admin' && (
@@ -36,8 +36,8 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                 onClick={onClose}
                 className={`px-4 py-2 rounded-md font-medium transition-colors block ${
                   location.pathname === '/admin/users'
-                    ? 'bg-red-50 text-red-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
                 }`}
               >
                 유저 관리
@@ -49,8 +49,8 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                 onClick={onClose}
                 className={`px-4 py-2 rounded-md font-medium transition-colors block ${
                   location.pathname === '/admin/notices'
-                    ? 'bg-yellow-50 text-yellow-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
                 }`}
               >
                 내부 공지
@@ -61,15 +61,15 @@ export default function Sidebar({ isOpen, onClose }: Props) {
               onClick={onClose}
               className={`px-4 py-2 rounded-md font-medium transition-colors block ${
                 location.pathname === '/mypage'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
               }`}
             >
               마이페이지
             </Link>
             <button
               onClick={handleSignOut}
-              className="px-4 py-2 text-left rounded-md font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="px-4 py-2 text-left rounded-md font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors"
             >
               로그아웃
             </button>
@@ -78,7 +78,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
           <Link
             to="/login"
             onClick={onClose}
-            className="px-4 py-2 rounded-md font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors block"
+            className="px-4 py-2 rounded-md font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100 transition-colors block"
           >
             로그인
           </Link>
@@ -86,7 +86,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
       </div>
 
       {/* 하단: 메뉴 */}
-      <h2 className="text-sm font-bold text-gray-400 uppercase mb-1 px-2">메뉴</h2>
+      <h2 className="text-sm font-bold text-gray-400 dark:text-slate-400 uppercase mb-1 px-2">메뉴</h2>
       {navLinks.map((link) => {
         const isActive = location.pathname === link.path || location.pathname.startsWith(link.path + '/');
         return (
@@ -96,10 +96,10 @@ export default function Sidebar({ isOpen, onClose }: Props) {
             onClick={onClose}
             className={`px-4 py-2 rounded-md font-medium transition-colors ${
               isActive && link.path !== '/'
-                ? 'bg-blue-50 text-blue-700'
+                ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
                 : location.pathname === '/' && link.path === '/'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
             }`}
           >
             {link.name}
@@ -112,7 +112,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   return (
     <>
       {/* 데스크톱 사이드바 */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col h-[calc(100vh-64px)] sticky top-[64px]">
+      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 hidden md:flex flex-col h-[calc(100vh-64px)] sticky top-16">
         {navContent}
       </aside>
 
@@ -121,7 +121,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         <div className="fixed inset-0 z-40 md:hidden" onClick={onClose}>
           <div className="absolute inset-0 bg-black/50" />
           <aside
-            className="absolute top-[64px] left-0 w-64 bg-white h-[calc(100vh-64px)] shadow-lg flex flex-col"
+            className="absolute top-16 left-0 w-64 bg-white dark:bg-slate-800 h-[calc(100vh-64px)] shadow-lg flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {navContent}

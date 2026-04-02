@@ -54,14 +54,14 @@ export default function GuideDetailPage() {
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-400">데이터를 불러오는 중...</div>;
+    return <div className="text-center py-12 text-gray-400 dark:text-slate-400">데이터를 불러오는 중...</div>;
   }
 
   if (!guide) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-400 mb-4">정보글을 찾을 수 없습니다.</p>
-        <Link to="/guide" className="text-blue-600 hover:underline">목록으로 돌아가기</Link>
+        <p className="text-gray-400 dark:text-slate-400 mb-4">정보글을 찾을 수 없습니다.</p>
+        <Link to="/guide" className="text-blue-600 dark:text-blue-400 hover:underline">목록으로 돌아가기</Link>
       </div>
     );
   }
@@ -70,11 +70,11 @@ export default function GuideDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <Link to="/guide" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
+      <Link to="/guide" className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
         ← 목록으로
       </Link>
 
-      <article className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <article className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-gray-200 dark:border-slate-700 overflow-hidden">
         {guide.imageUrl && (
           <img src={guide.imageUrl} alt={guide.title} className="w-full max-h-80 object-cover" />
         )}
@@ -82,51 +82,51 @@ export default function GuideDetailPage() {
         <div className="p-4 md:p-6">
           <div className="flex flex-wrap items-center gap-2 mb-3">
             {categoryName && (
-              <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium">
+              <span className="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full font-medium">
                 {categoryName}
               </span>
             )}
             {guide.authorNickname && (
               <span className={`text-xs font-medium ${
                 guide.authorRole === 'admin'
-                  ? 'text-blue-600'
+                  ? 'text-blue-600 dark:text-blue-400'
                   : guide.authorRole === 'editor'
-                    ? 'text-pink-500'
-                    : 'text-gray-500'
+                    ? 'text-pink-500 dark:text-pink-400'
+                    : 'text-gray-500 dark:text-slate-300'
               }`}>
                 {guide.authorNickname}
               </span>
             )}
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 dark:text-slate-400">
               {new Date(guide.createdAt).toLocaleDateString('ko-KR')}
             </span>
             {guide.updatedAt !== guide.createdAt && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 dark:text-slate-400">
                 (수정: {new Date(guide.updatedAt).toLocaleDateString('ko-KR')})
               </span>
             )}
           </div>
 
-          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 mb-4 md:mb-6">{guide.title}</h1>
+          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-slate-100 mb-4 md:mb-6">{guide.title}</h1>
 
           <div
-            className="tiptap-editor prose max-w-none text-gray-700"
+            className="tiptap-editor prose max-w-none text-gray-700 dark:text-slate-300"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(guide.content) }}
           />
         </div>
 
         {canEdit() && (isAdmin() || guide.authorRole !== 'admin') && (
-          <div className="p-4 md:p-6 border-t border-gray-200 flex flex-col md:flex-row gap-2 md:gap-3">
+          <div className="p-4 md:p-6 border-t border-gray-200 dark:border-slate-700 flex flex-col md:flex-row gap-2 md:gap-3">
             <Link
               to={`/guide/${guide.id}/edit`}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors text-sm text-center"
+              className="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium rounded-lg transition-colors text-sm text-center"
             >
               수정
             </Link>
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="px-4 py-2 bg-red-50 hover:bg-red-100 disabled:bg-red-50 text-red-600 font-medium rounded-lg transition-colors text-sm"
+              className="px-4 py-2 bg-red-50 dark:bg-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:bg-red-50 text-red-600 dark:text-red-400 font-medium rounded-lg transition-colors text-sm"
             >
               {deleting ? '삭제 중...' : '삭제'}
             </button>

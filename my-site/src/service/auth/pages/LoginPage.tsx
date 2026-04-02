@@ -28,34 +28,34 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto mt-12">
-      <h1 className="text-3xl font-extrabold text-blue-900 mb-6 tracking-tight">로그인</h1>
+      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight">로그인</h1>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
             {error}
           </div>
         )}
 
         <div className="mb-4">
-          <label className="block text-sm font-bold text-gray-700 mb-2">이메일</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">이메일</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
             placeholder="admin@example.com"
             required
           />
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-bold text-gray-700 mb-2">비밀번호</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">비밀번호</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
             placeholder="비밀번호를 입력하세요"
             required
           />
@@ -64,14 +64,14 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 dark:disabled:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg transition-colors"
         >
           {loading ? '로그인 중...' : '로그인'}
         </button>
 
-        <p className="text-sm text-gray-500 text-center mt-4">
+        <p className="text-sm text-gray-500 dark:text-slate-300 text-center mt-4">
           계정이 없으신가요?{' '}
-          <Link to="/signup" className="text-blue-600 hover:underline">회원가입</Link>
+          <Link to="/signup" className="text-blue-600 dark:text-blue-400 hover:underline">회원가입</Link>
         </p>
       </form>
     </div>

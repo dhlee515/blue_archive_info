@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Category } from '@/types/guide';
-import { CategoryRepository } from '@/repositories/categoryRepository';
+import { InternalCategoryRepository } from '@/repositories/internalCategoryRepository';
 import {
   DndContext,
   closestCenter,
@@ -126,7 +126,7 @@ function SortableItem({
   );
 }
 
-export default function CategoryManagePage() {
+export default function InternalCategoryManagePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
@@ -147,7 +147,7 @@ export default function CategoryManagePage() {
 
   async function fetchCategories() {
     try {
-      const data = await CategoryRepository.getCategories();
+      const data = await InternalCategoryRepository.getCategories();
       setCategories(data);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
@@ -171,7 +171,7 @@ export default function CategoryManagePage() {
     setCategories(newCategories);
 
     try {
-      await CategoryRepository.reorder(newCategories.map((c) => c.id));
+      await InternalCategoryRepository.reorder(newCategories.map((c) => c.id));
       await fetchCategories();
     } catch (error) {
       console.error('Failed to reorder:', error);
@@ -185,7 +185,7 @@ export default function CategoryManagePage() {
     if (!newName.trim()) return;
     setAdding(true);
     try {
-      await CategoryRepository.createCategory(newName.trim());
+      await InternalCategoryRepository.createCategory(newName.trim());
       setNewName('');
       await fetchCategories();
     } catch (error) {
@@ -200,7 +200,7 @@ export default function CategoryManagePage() {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     setDeletingId(id);
     try {
-      await CategoryRepository.deleteCategory(id);
+      await InternalCategoryRepository.deleteCategory(id);
       await fetchCategories();
     } catch (error) {
       console.error('Failed to delete category:', error);
@@ -214,7 +214,7 @@ export default function CategoryManagePage() {
     if (!editingName.trim()) return;
     setSavingId(id);
     try {
-      await CategoryRepository.updateName(id, editingName.trim());
+      await InternalCategoryRepository.updateName(id, editingName.trim());
       setEditingId(null);
       await fetchCategories();
     } catch (error) {
@@ -231,7 +231,7 @@ export default function CategoryManagePage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight">카테고리 관리</h1>
+      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight">내부 공지 카테고리 관리</h1>
 
       {/* 추가 폼 */}
       <form onSubmit={handleAdd} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6 flex gap-3">

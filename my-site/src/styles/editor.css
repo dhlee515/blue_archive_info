@@ -68,6 +68,34 @@
   margin: 0.5em 0;
 }
 
+/* 다크 모드 */
+@media (prefers-color-scheme: dark) {
+  .tiptap-editor pre {
+    background: #0f172a;
+  }
+
+  .tiptap-editor code {
+    background: #334155;
+  }
+
+  .tiptap-editor pre code {
+    background: none;
+  }
+
+  .tiptap-editor blockquote {
+    border-left-color: #475569;
+    color: #94a3b8;
+  }
+
+  .tiptap-editor a {
+    color: #60a5fa;
+  }
+
+  .tiptap-editor hr {
+    border-top-color: #334155;
+  }
+}
+
 /* 모바일 */
 @media (max-width: 768px) {
   .tiptap-editor {

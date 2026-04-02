@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router';
 import type { Category } from '@/types/guide';
 import { GuideRepository } from '@/repositories/guideRepository';
 import { CategoryRepository } from '@/repositories/categoryRepository';
+import { InternalCategoryRepository } from '@/repositories/internalCategoryRepository';
 import { useAuthStore } from '@/stores/authStore';
 import RichTextEditor from '../components/RichTextEditor';
 
@@ -27,8 +28,7 @@ export default function GuideFormPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const cats = await CategoryRepository.getCategories();
-        setCategories(cats);
+        let internal = searchParams.get('internal') === 'true';
 
         if (id) {
           const guide = await GuideRepository.getGuideById(id);
@@ -37,7 +37,15 @@ export default function GuideFormPage() {
           setContent(guide.content);
           setIsInternal(guide.isInternal);
           setImagePreview(guide.imageUrl);
-        } else {
+          internal = guide.isInternal;
+        }
+
+        const cats = internal
+          ? await InternalCategoryRepository.getCategories()
+          : await CategoryRepository.getCategories();
+        setCategories(cats);
+
+        if (!id) {
           const paramCategory = searchParams.get('category');
           const matched = paramCategory ? cats.find((c) => c.id === paramCategory) : null;
           setCategoryId(matched ? matched.id : cats[0]?.id ?? '');
@@ -88,34 +96,34 @@ export default function GuideFormPage() {
   };
 
   if (initialLoading) {
-    return <div className="text-center py-12 text-gray-400">데이터를 불러오는 중...</div>;
+    return <div className="text-center py-12 text-gray-400 dark:text-slate-400">데이터를 불러오는 중...</div>;
   }
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-extrabold text-blue-900 mb-6 tracking-tight">
+      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight">
         {isEdit ? '정보글 수정' : '정보글 작성'}
       </h1>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 flex flex-col gap-4 md:gap-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-gray-200 dark:border-slate-700 p-4 md:p-6 flex flex-col gap-4 md:gap-5">
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">제목</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-slate-700 dark:text-slate-100"
             placeholder="정보글 제목을 입력하세요"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">카테고리</label>
           {categories.length > 0 ? (
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+              className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-slate-700 dark:text-slate-100"
             >
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -124,12 +132,12 @@ export default function GuideFormPage() {
               ))}
             </select>
           ) : (
-            <p className="text-sm text-gray-400">카테고리가 없습니다. 관리자에게 문의하세요.</p>
+            <p className="text-sm text-gray-400 dark:text-slate-400">카테고리가 없습니다. 관리자에게 문의하세요.</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">본문</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">본문</label>
           <RichTextEditor content={content} onChange={setContent} />
         </div>
 
@@ -138,14 +146,14 @@ export default function GuideFormPage() {
             type="button"
             onClick={handleSubmit}
             disabled={loading || !categoryId || !title.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 dark:disabled:bg-blue-800 text-white font-bold py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
           >
             {loading ? '저장 중...' : isEdit ? '수정하기' : '작성하기'}
           </button>
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
+            className="bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
           >
             취소
           </button>

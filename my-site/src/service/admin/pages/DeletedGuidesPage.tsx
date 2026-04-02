@@ -44,16 +44,16 @@ export default function DeletedGuidesPage() {
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-400">데이터를 불러오는 중...</div>;
+    return <div className="text-center py-12 text-gray-400 dark:text-slate-400">데이터를 불러오는 중...</div>;
   }
 
   return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/guide" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
+      <Link to="/guide" className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
         ← 정보글 목록으로
       </Link>
 
-      <h1 className="text-3xl font-extrabold text-blue-900 mb-6 tracking-tight">삭제된 글</h1>
+      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight">삭제된 글</h1>
 
       {guides.length > 0 ? (
         <div className="flex flex-col">
@@ -62,26 +62,26 @@ export default function DeletedGuidesPage() {
             return (
               <div
                 key={guide.id}
-                className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 last:border-b-0"
+                className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 last:border-b-0"
               >
                 {categoryName && (
-                  <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-500 rounded font-medium whitespace-nowrap">
+                  <span className="text-xs px-1.5 py-0.5 bg-gray-200 dark:bg-slate-600 text-gray-500 dark:text-slate-300 rounded font-medium whitespace-nowrap">
                     {categoryName}
                   </span>
                 )}
-                <span className="font-medium text-gray-400 flex-1 truncate line-through">
+                <span className="font-medium text-gray-400 dark:text-slate-400 flex-1 truncate line-through">
                   {guide.title}
                 </span>
-                <span className="text-xs text-gray-400 whitespace-nowrap">
+                <span className="text-xs text-gray-400 dark:text-slate-400 whitespace-nowrap">
                   {guide.authorNickname}
                 </span>
-                <span className="text-xs text-gray-400 whitespace-nowrap">
+                <span className="text-xs text-gray-400 dark:text-slate-400 whitespace-nowrap">
                   {new Date(guide.updatedAt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
                 <button
                   onClick={() => handleRestore(guide.id)}
                   disabled={restoringId === guide.id}
-                  className="px-3 py-1 bg-green-50 hover:bg-green-100 text-green-600 text-xs font-medium rounded transition-colors disabled:opacity-50 ml-2"
+                  className="px-3 py-1 bg-green-50 dark:bg-green-900/40 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400 text-xs font-medium rounded transition-colors disabled:opacity-50 ml-2"
                 >
                   복원
                 </button>
@@ -90,7 +90,7 @@ export default function DeletedGuidesPage() {
           })}
         </div>
       ) : (
-        <div className="text-center py-12 text-gray-400 border border-dashed border-gray-300 rounded-lg">
+        <div className="text-center py-12 text-gray-400 dark:text-slate-400 border border-dashed border-gray-300 dark:border-slate-600 rounded-lg">
           삭제된 글이 없습니다.
         </div>
       )}

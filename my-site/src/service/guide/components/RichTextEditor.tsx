@@ -83,7 +83,7 @@ export default function RichTextEditor({ content, onChange }: Props) {
 
   const btn = (active: boolean) =>
     `px-2 py-1 rounded text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
-      active ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+      active ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-600'
     }`;
 
   const urlLabels: Record<string, string> = {
@@ -93,9 +93,9 @@ export default function RichTextEditor({ content, onChange }: Props) {
   };
 
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
+    <div className="border border-gray-300 dark:border-slate-600 rounded-lg overflow-hidden">
       {/* 툴바 */}
-      <div className="flex flex-nowrap md:flex-wrap gap-1 p-2 bg-gray-50 border-b border-gray-200 overflow-x-auto">
+      <div className="flex flex-nowrap md:flex-wrap gap-1 p-2 bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-700 overflow-x-auto">
         {/* 텍스트 서식 */}
         <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive('bold'))}>
           <strong>B</strong>
@@ -110,7 +110,7 @@ export default function RichTextEditor({ content, onChange }: Props) {
           <span className="line-through">S</span>
         </button>
 
-        <span className="w-px bg-gray-300 mx-1" />
+        <span className="w-px bg-gray-300 dark:bg-slate-600 mx-1" />
 
         {/* 제목 */}
         <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={btn(editor.isActive('heading', { level: 1 }))}>
@@ -123,20 +123,20 @@ export default function RichTextEditor({ content, onChange }: Props) {
           H3
         </button>
 
-        <span className="w-px bg-gray-300 mx-1" />
+        <span className="w-px bg-gray-300 dark:bg-slate-600 mx-1" />
 
         {/* 글자 색상 */}
         <input
           type="color"
           onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-          className="w-8 h-8 rounded cursor-pointer border border-gray-300"
+          className="w-8 h-8 rounded cursor-pointer border border-gray-300 dark:border-slate-600"
           title="글자 색상"
         />
         <button type="button" onClick={() => editor.chain().focus().unsetColor().run()} className={btn(false)}>
           기본색
         </button>
 
-        <span className="w-px bg-gray-300 mx-1" />
+        <span className="w-px bg-gray-300 dark:bg-slate-600 mx-1" />
 
         {/* 정렬 */}
         <button type="button" onClick={() => editor.chain().focus().setTextAlign('left').run()} className={btn(editor.isActive({ textAlign: 'left' }))}>
@@ -149,7 +149,7 @@ export default function RichTextEditor({ content, onChange }: Props) {
           우
         </button>
 
-        <span className="w-px bg-gray-300 mx-1" />
+        <span className="w-px bg-gray-300 dark:bg-slate-600 mx-1" />
 
         {/* 목록 */}
         <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={btn(editor.isActive('bulletList'))}>
@@ -159,7 +159,7 @@ export default function RichTextEditor({ content, onChange }: Props) {
           1. 목록
         </button>
 
-        <span className="w-px bg-gray-300 mx-1" />
+        <span className="w-px bg-gray-300 dark:bg-slate-600 mx-1" />
 
         {/* 삽입 */}
         <button type="button" onClick={() => openUrlInput('link')} className={btn(editor.isActive('link'))}>
@@ -181,7 +181,7 @@ export default function RichTextEditor({ content, onChange }: Props) {
           구분선
         </button>
 
-        <span className="w-px bg-gray-300 mx-1" />
+        <span className="w-px bg-gray-300 dark:bg-slate-600 mx-1" />
 
         {/* Undo/Redo */}
         <button type="button" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} className={`${btn(false)} disabled:opacity-30`}>
@@ -194,20 +194,20 @@ export default function RichTextEditor({ content, onChange }: Props) {
 
       {/* URL 입력 바 */}
       {urlInput && (
-        <div className="flex gap-2 p-2 bg-blue-50 border-b border-gray-200">
+        <div className="flex gap-2 p-2 bg-blue-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-700">
           <input
             type="text"
             value={urlValue}
             onChange={(e) => setUrlValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submitUrl(); if (e.key === 'Escape') setUrlInput(null); }}
             placeholder={urlLabels[urlInput] + '을 입력하세요'}
-            className="flex-1 p-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="flex-1 p-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-slate-700 dark:text-slate-100"
             autoFocus
           />
           <button type="button" onClick={submitUrl} className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
             확인
           </button>
-          <button type="button" onClick={() => setUrlInput(null)} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm font-medium rounded hover:bg-gray-300 transition-colors">
+          <button type="button" onClick={() => setUrlInput(null)} className="px-3 py-1.5 bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-slate-400 text-sm font-medium rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors">
             취소
           </button>
         </div>

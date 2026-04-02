@@ -11,7 +11,7 @@ export default function AdminRoute({ children }: Props) {
   const isLoading = useAuthStore((s) => s.isLoading);
 
   if (isLoading) {
-    return <div className="text-center py-12 text-gray-400">확인 중...</div>;
+    return <div className="text-center py-12 text-gray-400 dark:text-slate-400">확인 중...</div>;
   }
 
   if (user?.role !== 'admin') {
@@ -27,7 +27,7 @@ export function EditorRoute({ children }: Props) {
   const isLoading = useAuthStore((s) => s.isLoading);
 
   if (isLoading) {
-    return <div className="text-center py-12 text-gray-400">확인 중...</div>;
+    return <div className="text-center py-12 text-gray-400 dark:text-slate-400">확인 중...</div>;
   }
 
   if (user?.role !== 'admin' && user?.role !== 'editor') {
