@@ -82,10 +82,10 @@ export default function GuideFormPage() {
 
       if (isEdit && id) {
         await GuideRepository.updateGuide(id, formData, user.id);
-        navigate(`/guide/${id}`);
+        navigate(isInternal ? '/admin/notices' : `/guide/${id}`);
       } else {
-        const guide = await GuideRepository.createGuide(formData, user.id);
-        navigate(`/guide/${guide.id}`);
+        await GuideRepository.createGuide(formData, user.id);
+        navigate(isInternal ? '/admin/notices' : '/guide');
       }
     } catch (error) {
       console.error('Failed to save guide:', error);
@@ -152,7 +152,7 @@ export default function GuideFormPage() {
           </button>
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(isInternal ? '/admin/notices' : '/guide')}
             className="bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
           >
             취소

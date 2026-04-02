@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
 import { AuthRepository } from '@/repositories/authRepository';
 
@@ -22,7 +23,7 @@ export default function MyPage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState('');
 
-  if (!user) return null;
+  if (!user) return <Navigate to="/login" replace />;
 
   const handleNicknameChange = async () => {
     if (!nickname.trim()) return;

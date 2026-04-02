@@ -27,6 +27,14 @@ export default function GuideDetailPage() {
           GuideRepository.getGuideById(id),
           CategoryRepository.getCategories(),
         ]);
+        // 내부 공지는 editor/admin만 접근 가능
+        if (guideData.isInternal) {
+          const role = user?.role;
+          if (role !== 'admin' && role !== 'editor') {
+            navigate('/guide', { replace: true });
+            return;
+          }
+        }
         setGuide(guideData);
         setCategories(cats);
       } catch (error) {
