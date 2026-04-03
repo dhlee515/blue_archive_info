@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import type { Student } from '@/types/student';
 import { formatAttackType, formatArmorType, formatSchool, formatRoleType, formatRarity } from '@/utils/format';
 
@@ -20,7 +21,7 @@ interface Props {
 
 export default function StudentCard({ student }: Props) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow">
+    <Link to={`/students/${student.schaleId}`} className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow block">
       {/* 이미지 */}
       <div className="h-44 bg-gray-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
         {student.imageUrl ? (
@@ -63,6 +64,6 @@ export default function StudentCard({ student }: Props) {
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

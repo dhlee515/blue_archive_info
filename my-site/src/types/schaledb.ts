@@ -52,7 +52,7 @@ export interface SchaleDBStudent {
   AmmoCost: number;
   Range: number;
   RegenCost: number;
-  Skills: SchaleDBSkill[];
+  Skills: Record<string, SchaleDBSkill> | SchaleDBSkill[];
   FavorStatType: string[];
   FavorStatValue: number[][];
   FavorAlts: number[];

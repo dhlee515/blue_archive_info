@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router';
 import MainLayout from '@/components/layouts/MainLayout';
 import HomePage from '@/service/home/pages/HomePage';
 import StudentListPage from '@/service/student/pages/StudentListPage';
+import StudentDetailPage from '@/service/student/pages/StudentDetailPage';
 import EligmaCalcPage from '@/service/calculator/pages/EligmaCalcPage';
 import CraftingCalcPage from '@/service/calculator/pages/CraftingCalcPage';
 import GuideListPage from '@/service/guide/pages/GuideListPage';
@@ -33,6 +34,10 @@ export const router = createBrowserRouter([
       {
         path: 'students',
         element: <StudentListPage />,
+      },
+      {
+        path: 'students/:id',
+        element: <StudentDetailPage />,
       },
       {
         path: 'guide',
