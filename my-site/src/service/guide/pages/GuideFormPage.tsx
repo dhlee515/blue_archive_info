@@ -6,6 +6,7 @@ import { CategoryRepository } from '@/repositories/categoryRepository';
 import { InternalCategoryRepository } from '@/repositories/internalCategoryRepository';
 import { useAuthStore } from '@/stores/authStore';
 import RichTextEditor from '../components/RichTextEditor';
+import { uploadGuideImage } from '../utils/uploadGuideImage';
 
 export default function GuideFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -138,7 +139,7 @@ export default function GuideFormPage() {
 
         <div>
           <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">본문</label>
-          <RichTextEditor content={content} onChange={setContent} />
+          <RichTextEditor content={content} onChange={setContent} onImageUpload={uploadGuideImage} />
         </div>
 
         <div className="flex flex-col md:flex-row gap-2 md:gap-3 pt-2">

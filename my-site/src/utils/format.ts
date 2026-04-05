@@ -42,8 +42,10 @@ const SCHOOL_LABELS: Record<string, string> = {
   SRT: 'SRT',
   Arius: '아리우스',
   ETC: '기타',
-  Tokiwadai: '토키와다이',
+  Tokiwadai: '초전자포',
   Sakugawa: '사쿠가와',
+  Highlander: '하이랜더',
+  WildHunt: '와일드헌트',
 };
 
 const TERRAIN_LABELS = ['D', 'C', 'B', 'A', 'S', 'SS'];

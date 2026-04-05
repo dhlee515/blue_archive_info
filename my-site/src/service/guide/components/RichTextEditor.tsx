@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -11,13 +11,23 @@ import '@/styles/editor.css';
 interface Props {
   content: string;
   onChange: (html: string) => void;
+  onImageUpload?: (file: File) => Promise<string>;
 }
 
 type UrlInputType = 'link' | 'image' | 'youtube' | null;
 
-export default function RichTextEditor({ content, onChange }: Props) {
+export default function RichTextEditor({ content, onChange, onImageUpload }: Props) {
   const [urlInput, setUrlInput] = useState<UrlInputType>(null);
   const [urlValue, setUrlValue] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [showImageChoice, setShowImageChoice] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ref로 최신 함수 참조 유지 (editorProps 클로저 문제 해결)
+  const onImageUploadRef = useRef(onImageUpload);
+  onImageUploadRef.current = onImageUpload;
+
+  const handleFileUploadRef = useRef(async (_file: File) => {});
 
   const editor = useEditor({
     extensions: [
@@ -41,6 +51,35 @@ export default function RichTextEditor({ content, onChange }: Props) {
       attributes: {
         class: 'tiptap-editor',
       },
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved || !onImageUploadRef.current) return false;
+        const files = event.dataTransfer?.files;
+        if (!files?.length) return false;
+
+        const file = files[0];
+        if (!file.type.startsWith('image/')) return false;
+
+        event.preventDefault();
+        handleFileUploadRef.current(file);
+        return true;
+      },
+      handlePaste: (_view, event) => {
+        if (!onImageUploadRef.current) return false;
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        for (const item of Array.from(items)) {
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              event.preventDefault();
+              handleFileUploadRef.current(file);
+              return true;
+            }
+          }
+        }
+        return false;
+      },
       handleClick: (_view, _pos, event) => {
         if ((event.target as HTMLElement).closest('a')) {
           event.preventDefault();
@@ -53,6 +92,28 @@ export default function RichTextEditor({ content, onChange }: Props) {
       onChange(editor.getHTML());
     },
   });
+
+  // editorRef로 최신 editor 인스턴스 유지
+  const editorRef = useRef(editor);
+  editorRef.current = editor;
+
+  // handleDrop/handlePaste에서 editor를 ref로 참조하도록 재설정
+  const handleFileUploadWithEditor = useCallback(async (file: File) => {
+    if (!editorRef.current || !onImageUploadRef.current) return;
+
+    setIsUploading(true);
+    try {
+      const url = await onImageUploadRef.current(file);
+      editorRef.current.chain().focus().setImage({ src: url }).run();
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      alert(error instanceof Error ? error.message : '이미지 업로드에 실패했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
+
+  handleFileUploadRef.current = handleFileUploadWithEditor;
 
   const openUrlInput = useCallback((type: UrlInputType) => {
     setUrlValue('');
@@ -78,6 +139,12 @@ export default function RichTextEditor({ content, onChange }: Props) {
     setUrlInput(null);
     setUrlValue('');
   }, [editor, urlInput, urlValue]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUploadWithEditor(file);
+    e.target.value = '';
+  }, [handleFileUploadWithEditor]);
 
   if (!editor) return null;
 
@@ -165,8 +232,13 @@ export default function RichTextEditor({ content, onChange }: Props) {
         <button type="button" onClick={() => openUrlInput('link')} className={btn(editor.isActive('link'))}>
           링크
         </button>
-        <button type="button" onClick={() => openUrlInput('image')} className={btn(false)}>
-          이미지
+        <button
+          type="button"
+          onClick={() => onImageUpload ? setShowImageChoice((v) => !v) : openUrlInput('image')}
+          className={btn(false)}
+          disabled={isUploading}
+        >
+          {isUploading ? '업로드 중...' : '이미지'}
         </button>
         <button type="button" onClick={() => openUrlInput('youtube')} className={btn(false)}>
           YouTube
@@ -192,6 +264,33 @@ export default function RichTextEditor({ content, onChange }: Props) {
         </button>
       </div>
 
+      {/* 이미지 삽입 방식 선택 바 */}
+      {showImageChoice && (
+        <div className="flex gap-2 p-2 bg-green-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => { openUrlInput('image'); setShowImageChoice(false); }}
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+          >
+            URL 입력
+          </button>
+          <button
+            type="button"
+            onClick={() => { fileInputRef.current?.click(); setShowImageChoice(false); }}
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+          >
+            파일 업로드
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowImageChoice(false)}
+            className="px-3 py-1.5 bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-slate-400 text-sm font-medium rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+          >
+            취소
+          </button>
+        </div>
+      )}
+
       {/* URL 입력 바 */}
       {urlInput && (
         <div className="flex gap-2 p-2 bg-blue-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-700">
@@ -214,7 +313,25 @@ export default function RichTextEditor({ content, onChange }: Props) {
       )}
 
       {/* 에디터 영역 */}
-      <EditorContent editor={editor} />
+      <div className="relative">
+        <EditorContent editor={editor} />
+        {isUploading && (
+          <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 flex items-center justify-center z-10">
+            <span className="text-sm text-gray-500 dark:text-slate-400 font-medium">
+              이미지 업로드 중...
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 숨겨진 파일 입력 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
     </div>
   );
 }
