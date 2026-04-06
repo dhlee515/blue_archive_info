@@ -17,6 +17,7 @@ import GuideLogPage from '@/service/admin/pages/GuideLogPage';
 import DeletedGuidesPage from '@/service/admin/pages/DeletedGuidesPage';
 import InternalNoticePage from '@/service/admin/pages/InternalNoticePage';
 import InternalCategoryManagePage from '@/service/admin/pages/InternalCategoryManagePage';
+import RerollPage from '@/service/reroll/pages/RerollPage';
 import AdminRoute, { EditorRoute } from '@/components/guards/AdminRoute';
 
 const GuideFormPage = lazy(() => import('@/service/guide/pages/GuideFormPage'));
@@ -54,6 +55,10 @@ export const router = createBrowserRouter([
       {
         path: 'guide/:id/edit',
         element: <EditorRoute><LazyGuideForm /></EditorRoute>,
+      },
+      {
+        path: 'reroll',
+        element: <RerollPage />,
       },
       {
         path: 'calculator/eligma',

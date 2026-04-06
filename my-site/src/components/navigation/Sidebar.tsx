@@ -15,6 +15,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
     { name: '대시보드', path: '/' },
     { name: '정보글', path: '/guide' },
     { name: '학생 목록', path: '/students' },
+    { name: '리세계 추천', path: '/reroll' },
     { name: '엘리그마 계산기', path: '/calculator/eligma' },
     { name: '제조 계산기', path: '/calculator/crafting' },
   ];
