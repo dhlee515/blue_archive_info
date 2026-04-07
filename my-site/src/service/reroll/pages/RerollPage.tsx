@@ -5,21 +5,40 @@ import type { Student } from '@/types/student';
 import type { RerollCategory } from '@/types/reroll';
 import RerollCategoryRow from '../components/RerollCategoryRow';
 import rerollData from '@/data/reroll.json';
+import studentAliases from '@/data/studentAliases.json';
 
 export default function RerollPage() {
   const [students, setStudents] = useState<Map<number, Student>>(new Map());
+  const [nameToId, setNameToId] = useState<Map<string, number>>(new Map());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [inputText, setInputText] = useState('');
+  const [pyroxene, setPyroxene] = useState('');
+  const [price, setPrice] = useState('');
   const [loading, setLoading] = useState(true);
   const [capturing, setCapturing] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
 
+  // 표에 있는 모든 schaleId 수집
+  const allRerollIds = new Set(
+    (rerollData as RerollCategory[]).flatMap((cat) => cat.students.map((s) => s.schaleId)),
+  );
+
   useEffect(() => {
     StudentRepository.getStudents().then((list) => {
-      const map = new Map<number, Student>();
-      for (const s of list) map.set(s.schaleId, s);
-      setStudents(map);
+      const idMap = new Map<number, Student>();
+      const nMap = new Map<string, number>();
+      for (const s of list) {
+        idMap.set(s.schaleId, s);
+        // 표에 있는 학생만 이름 매핑
+        if (allRerollIds.has(s.schaleId)) {
+          nMap.set(s.name, s.schaleId);
+        }
+      }
+      setStudents(idMap);
+      setNameToId(nMap);
       setLoading(false);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleToggle = useCallback((schaleId: number) => {
@@ -31,6 +50,51 @@ export default function RerollPage() {
     });
   }, []);
 
+  // studentAliases.json에서 이름/별명 → schaleId 매핑 빌드
+  const aliasMap = new Map<string, number>();
+  for (const [id, names] of Object.entries(studentAliases as Record<string, string[]>)) {
+    const schaleId = Number(id);
+    for (const name of names) {
+      aliasMap.set(name, schaleId);
+    }
+  }
+
+  /** 텍스트 입력으로 학생 선택 반영 */
+  const handleApplyInput = () => {
+    if (!inputText.trim()) return;
+    const names = inputText.split(/[,+]/).map((n) => n.trim()).filter(Boolean);
+    const newSelected = new Set(selectedIds);
+    for (const name of names) {
+      // 1. 별명 매칭
+      const aliasId = aliasMap.get(name);
+      if (aliasId) {
+        newSelected.add(aliasId);
+        continue;
+      }
+      // 2. 정확히 일치
+      const id = nameToId.get(name);
+      if (id) {
+        newSelected.add(id);
+        continue;
+      }
+      // 3. 부분 일치 (하나만 매치될 경우)
+      const matches: number[] = [];
+      for (const [n, sid] of nameToId) {
+        if (n.includes(name)) matches.push(sid);
+      }
+      if (matches.length === 1) newSelected.add(matches[0]);
+    }
+    setSelectedIds(newSelected);
+    setInputText('');
+  };
+
+  const handleReset = () => {
+    setSelectedIds(new Set());
+    setInputText('');
+    setPyroxene('');
+    setPrice('');
+  };
+
   const handleDownload = async () => {
     if (!captureRef.current || capturing) return;
     setCapturing(true);
@@ -41,7 +105,6 @@ export default function RerollPage() {
     const origWrapperStyle = wrapper.style.cssText;
     const origContainerStyle = container.style.cssText;
 
-    // 부모를 overflow hidden으로 설정하여 화면에서는 확장이 보이지 않도록 함
     wrapper.style.overflow = 'hidden';
     container.style.width = 'max-content';
     container.style.maxWidth = 'none';
@@ -74,7 +137,6 @@ export default function RerollPage() {
         },
       });
 
-      // 다운로드 트리거
       const today = new Date().toISOString().slice(0, 10);
       const link = document.createElement('a');
       link.download = `리세계_추천_${today}.png`;
@@ -83,7 +145,6 @@ export default function RerollPage() {
     } catch (err) {
       console.error('이미지 캡처 실패:', err);
     } finally {
-      // 스타일 원복
       wrapper.style.cssText = origWrapperStyle;
       container.style.cssText = origContainerStyle;
       rows.forEach((row, i) => {
@@ -95,7 +156,6 @@ export default function RerollPage() {
 
   const categories = rerollData as RerollCategory[];
 
-  // reroll 데이터와 학생 데이터 조인
   const resolvedCategories = categories.map((cat) => ({
     ...cat,
     students: cat.students
@@ -123,7 +183,7 @@ export default function RerollPage() {
             리세계 추천 학생
           </h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            학생을 클릭하여 선택한 뒤, 이미지로 저장할 수 있습니다.
+            학생을 클릭하거나 이름을 입력하여 선택한 뒤, 이미지로 저장할 수 있습니다.
           </p>
         </div>
         <button
@@ -135,15 +195,29 @@ export default function RerollPage() {
         </button>
       </div>
 
-      {/* 선택 초기화 */}
-      {selectedIds.size > 0 && (
+      {/* 보유 학생 입력 */}
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleApplyInput()}
+          placeholder="보유 캐릭터를 + 로 구분하여 입력 (예: 미카+호시노+히나)"
+          className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
         <button
-          onClick={() => setSelectedIds(new Set())}
-          className="mb-3 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
+          onClick={handleApplyInput}
+          className="shrink-0 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
         >
-          선택 초기화 ({selectedIds.size}명 선택됨)
+          반영하기
         </button>
-      )}
+        <button
+          onClick={handleReset}
+          className="shrink-0 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+        >
+          초기화
+        </button>
+      </div>
 
       {/* 캡처 대상 영역 */}
       <div
@@ -184,6 +258,30 @@ export default function RerollPage() {
             추천 학생 데이터가 없습니다.
           </p>
         )}
+
+        {/* 청휘석 & 가격 입력 (캡처에 포함) */}
+        <div className="mt-4 pt-3 border-t border-gray-200 dark:border-slate-700 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-blue-500 dark:text-blue-400">💎 청휘석 :</span>
+            <input
+              type="text"
+              value={pyroxene}
+              onChange={(e) => setPyroxene(e.target.value)}
+              placeholder="예: 4350"
+              className="w-32 px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-yellow-500 dark:text-yellow-400">🎫 가격 :</span>
+            <input
+              type="text"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="예: 410,000"
+              className="w-32 px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
