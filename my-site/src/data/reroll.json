@@ -6,8 +6,8 @@
       { "schaleId": 10074, "highlighted": true },
       { "schaleId": 20048, "highlighted": true },
       { "schaleId": 20041, "highlighted": true },
+      { "schaleId": 10045, "highlighted": true },
       { "schaleId": 10098, "highlighted": false },
-      { "schaleId": 10045, "highlighted": false },
       { "schaleId": 10086, "highlighted": false },
       { "schaleId": 10122, "highlighted": false },
       { "schaleId": 10111, "highlighted": false },
@@ -54,8 +54,8 @@
     ]
   },
   {
-    "key": "new",
-    "label": "신규",
+    "key": "god",
+    "label": "신",
     "students": [
       { "schaleId": 20039, "highlighted": true }
     ]
