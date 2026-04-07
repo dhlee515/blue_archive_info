@@ -177,8 +177,8 @@ export default function RerollPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-slate-100">
             리세계 추천 학생
           </h1>
@@ -189,34 +189,36 @@ export default function RerollPage() {
         <button
           onClick={handleDownload}
           disabled={capturing}
-          className="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
+          className="shrink-0 self-start sm:self-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
         >
           {capturing ? '저장 중...' : '이미지 저장'}
         </button>
       </div>
 
       {/* 보유 학생 입력 */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleApplyInput()}
-          placeholder="보유 캐릭터를 + 로 구분하여 입력 (예: 미카+호시노+히나)"
-          className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="보유 캐릭터를 + 로 구분하여 입력"
+          className="min-w-0 flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <button
-          onClick={handleApplyInput}
-          className="shrink-0 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-        >
-          반영하기
-        </button>
-        <button
-          onClick={handleReset}
-          className="shrink-0 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-        >
-          초기화
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleApplyInput}
+            className="flex-1 sm:flex-none shrink-0 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+          >
+            반영하기
+          </button>
+          <button
+            onClick={handleReset}
+            className="flex-1 sm:flex-none shrink-0 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+          >
+            초기화
+          </button>
+        </div>
       </div>
 
       {/* 캡처 대상 영역 */}
@@ -267,7 +269,7 @@ export default function RerollPage() {
               type="text"
               value={pyroxene}
               onChange={(e) => setPyroxene(e.target.value)}
-              placeholder="예: 4350"
+              placeholder=""
               className="w-32 px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -277,7 +279,7 @@ export default function RerollPage() {
               type="text"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="예: 410,000"
+              placeholder=""
               className="w-32 px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
