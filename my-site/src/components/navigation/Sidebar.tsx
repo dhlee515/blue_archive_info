@@ -18,6 +18,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
     { name: '리세계 추천', path: '/reroll' },
     { name: '엘리그마 계산기', path: '/calculator/eligma' },
     { name: '제조 계산기', path: '/calculator/crafting' },
+    { name: '이벤트 계산기', path: '/calculator/event' },
   ];
 
   const handleSignOut = async () => {

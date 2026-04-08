@@ -19,3 +19,4 @@ export type { CraftingNode, CraftingItem } from './crafting';
 export type { Guide, GuideFormData, Category, GuideLog } from './guide';
 export type { AuthUser, UserRole, UserProfile } from './auth';
 export type { RerollCategory, RerollStudent } from './reroll';
+export type { EventArchetypeId, EventConfig, PointEventConfig, ExchangeEventConfig, CardMatchingConfig, CardType, CardRarity } from './event';
