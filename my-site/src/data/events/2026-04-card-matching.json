@@ -7,11 +7,11 @@
   "description": "12장의 카드 중 같은 그림 2장을 찾는 메모리 게임. 카드 위치를 기억하는 데 도움이 됩니다.",
   "gridSize": 12,
   "cardTypes": [
-    { "id": "ssr-a", "name": "SSR A", "rarity": "SSR" },
-    { "id": "ssr-b", "name": "SSR B", "rarity": "SSR" },
-    { "id": "sr-a", "name": "SR A", "rarity": "SR" },
-    { "id": "sr-b", "name": "SR B", "rarity": "SR" },
-    { "id": "r", "name": "R", "rarity": "R" },
-    { "id": "n", "name": "N", "rarity": "N" }
+    { "id": "ssr-a", "name": "야쿠모", "rarity": "SSR" },
+    { "id": "ssr-b", "name": "타카네", "rarity": "SSR" },
+    { "id": "sr-a", "name": "미노리", "rarity": "SR" },
+    { "id": "sr-b", "name": "노도카", "rarity": "SR" },
+    { "id": "r", "name": "토모에", "rarity": "R" },
+    { "id": "n", "name": "모브", "rarity": "N" }
   ]
 }
