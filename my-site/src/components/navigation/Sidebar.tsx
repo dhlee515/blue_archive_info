@@ -36,17 +36,32 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         {user ? (
           <>
             {user.role === 'admin' && (
-              <Link
-                to="/admin/users"
-                onClick={onClose}
-                className={`px-4 py-2 rounded-md font-medium transition-colors block ${
-                  location.pathname === '/admin/users'
-                    ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300'
-                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
-                }`}
-              >
-                유저 관리
-              </Link>
+              <>
+                <Link
+                  to="/admin/users"
+                  onClick={onClose}
+                  className={`px-4 py-2 rounded-md font-medium transition-colors block ${
+                    location.pathname === '/admin/users'
+                      ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                      : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  유저 관리
+                </Link>
+                <Link
+                  to="/admin/notes"
+                  onClick={onClose}
+                  className={`px-4 py-2 rounded-md font-medium transition-colors block ${
+                    location.pathname === '/admin/notes'
+                      || location.pathname.startsWith('/admin/notes/')
+                      || location.pathname === '/admin/deleted-notes'
+                      ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                      : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  비밀 노트
+                </Link>
+              </>
             )}
             {(user.role === 'admin' || user.role === 'editor') && (
               <Link

@@ -197,17 +197,23 @@ export interface SecretNoteFormData {
 
 `GuideRepository` 구조를 그대로 참고. `class SecretNoteRepository` + `static` 메서드.
 
-| 메서드 | 권한 | 구현 요점 |
-|---|---|---|
-| `getNoteBySlug(slug)` | anon 허용 | `supabase.rpc('get_secret_note_by_slug', { p_slug: slug })` → `toNote()` 매핑 |
-| `getNotes()` | admin | `.from('secret_notes').select('*').is('deleted_at', null).order('created_at', { ascending: false })` |
-| `getNoteById(id)` | admin | 편집 화면용, `.single()` |
-| `createNote(form, userId)` | admin | `author_id` 저장 필요 → `userId` 받음. Base64 인코딩 + insert. slug 는 트리거 or `customSlug` |
-| `updateNote(id, form, userId)` | admin | `author_id` 는 건드리지 않지만, 권한 체크·로깅 확장 여지 위해 `userId` 유지 |
-| `deleteNote(id)` | admin | `update secret_notes set deleted_at = now() where id = ?` |
-| `getDeletedNotes()` | admin | `where deleted_at is not null` |
-| `restoreNote(id)` | admin | `update secret_notes set deleted_at = null where id = ?` |
-| `regenerateSlug(id)` | admin | `update secret_notes set slug = generate_short_slug() where id = ?` |
+| 메서드 | 반환 | 권한 | 구현 요점 |
+|---|---|---|---|
+| `getNoteBySlug(slug)` | `SecretNote \| null` | anon 허용 | `supabase.rpc('get_secret_note_by_slug', { p_slug: slug })` → `toNote()` 매핑 |
+| `getNotes()` | `SecretNote[]` | admin | `.from('secret_notes').select('*').is('deleted_at', null).order('created_at', { ascending: false })` |
+| `getNoteById(id)` | `SecretNote` | admin | 편집 화면용, `.single()` |
+| `createNote(form, userId)` | `SecretNote` | admin | `.from('secret_notes').insert({...}).select().single()` — 트리거가 생성한 **`slug` 반환에 사용**. Base64 인코딩. `author_id` 저장용 `userId` 필요 |
+| `updateNote(id, form, userId)` | `SecretNote` | admin | `.update({...}).eq('id', id).select().single()` — 수정 후 반환값으로 UI 즉시 갱신 |
+| `deleteNote(id)` | `void` | admin | `.update({ deleted_at: new Date().toISOString() }).eq('id', id)` |
+| `getDeletedNotes()` | `SecretNote[]` | admin | `where deleted_at is not null` |
+| `restoreNote(id)` | `void` | admin | `.update({ deleted_at: null }).eq('id', id)` |
+| `regenerateSlug(id)` | `string` (새 slug) | admin | `.update({ slug: null }).eq('id', id).select('slug').single()` — slug 를 null 로 넣으면 트리거가 새 slug 생성. 반환 slug 로 UI 즉시 갱신 |
+
+**구현 패턴 결정 — SDK 직접 사용 (`supabase.from().insert/update().select().single()`)**
+- [GuideRepository](my-site/src/repositories/guideRepository.ts) 의 `restPost`/`restPatch` 헬퍼는 **사용하지 않음**. 이유:
+  1. 이 리포는 트리거가 생성한 `slug` 를 반환받아야 하는데 `restPost` 는 `Prefer: return=minimal` 이라 반환값이 비어있음
+  2. [AuthRepository](my-site/src/repositories/authRepository.ts), [CategoryRepository](my-site/src/repositories/categoryRepository.ts), [InternalCategoryRepository](my-site/src/repositories/internalCategoryRepository.ts) 등 **대부분의 리포는 SDK 직접 사용**이 표준. guideRepository 만 REST 래퍼 사용의 예외
+  3. 반환 타입이 `SecretNote` 전체라 UI 에서 즉시 활용 가능 (기존 `createGuide` 의 `{ id } as Guide` 껍데기 패턴보다 개선)
 
 - `delete/restore/regenerateSlug` 는 audit log 가 없어 `userId` 불필요 → YAGNI 에 따라 단순 시그니처. 향후 `secret_note_logs` 도입 시 확장.
 - `encodeContent` / `decodeContent` 는 일단 파일 내부에 복사. 공용화는 PR#6.
@@ -222,7 +228,7 @@ export interface SecretNoteFormData {
 { path: 'n/:slug', element: <SecretNoteViewPage /> }
 
 // 관리자 영역 — AdminRoute (기존 /admin/deleted-guides 와 같은 컨벤션)
-{ path: 'admin/notes',              element: <AdminRoute><SecretNoteListPage /></AdminRoute> }
+{ path: 'admin/notes',              element: <AdminRoute><SecretNoteManagePage /></AdminRoute> }
 { path: 'admin/notes/new',          element: <AdminRoute><SecretNoteFormPage /></AdminRoute> }
 { path: 'admin/notes/:id/edit',     element: <AdminRoute><SecretNoteFormPage /></AdminRoute> }
 { path: 'admin/deleted-notes',      element: <AdminRoute><DeletedNotesPage /></AdminRoute> }
@@ -265,8 +271,8 @@ service/admin/
 - 상단 우측 액션: [새 노트 작성](indigo 톤, primary), [삭제된 노트](gray 톤, `to="/admin/deleted-notes"`)
 - 테이블 row:
   - 제목 + 수정일
-  - [링크 복사] → `navigator.clipboard.writeText(\`${window.location.origin}/n/${note.slug}\`)` + `alert('링크가 복사되었습니다.')`
-  - [슬러그 재발급] → `confirm('기존 URL이 비활성화됩니다. 재발급하시겠습니까?')` 후 `regenerateSlug`
+  - [링크 복사] → `navigator.clipboard.writeText(\`${window.location.origin}/n/${note.slug}\`)` 후 버튼 라벨을 1.5초간 `"복사됨!"` 으로 토글 (기존 프로젝트엔 성공 alert 패턴이 없으므로 alert 대신 인라인 피드백)
+  - [슬러그 재발급] → `confirm('기존 URL이 비활성화됩니다. 재발급하시겠습니까?')` 후 `regenerateSlug(id)` 반환 slug 로 상태 즉시 업데이트 (refetch 불필요)
   - [수정] `<Link to={\`/admin/notes/${id}/edit\`}>`
   - [삭제] `deleteNote` + `confirm('정말 삭제하시겠습니까?')`
 - 스타일 톤: `indigo-*` 계열 (purple 은 guide-logs 버튼과 충돌하여 회피)
@@ -278,7 +284,7 @@ service/admin/
   - "커스텀 슬러그(선택)" input + 도움말 "비워두면 자동 생성됩니다."
   - `<RichTextEditor content={content} onChange={setContent} onImageUpload={uploadGuideImage} />`
 - 저장/취소 버튼 — 취소 시 `navigate('/admin/notes')`
-- 저장 성공: `navigate('/admin/notes')` + `alert('작성되었습니다. 링크: /n/' + slug)` (또는 토스트 도입 시 대체)
+- 저장 성공: `navigate('/admin/notes')` 만 (기존 [GuideFormPage:86-89](my-site/src/service/guide/pages/GuideFormPage.tsx#L86-L89) 와 일관). 링크 복사는 목록 페이지의 [링크 복사] 버튼으로 수행 — alert 로 성공 알림을 띄우는 패턴은 프로젝트에 없음
 
 ### 8.5 `DeletedNotesPage` (admin, `/admin/deleted-notes`)
 - [DeletedGuidesPage](my-site/src/service/admin/pages/DeletedGuidesPage.tsx) 를 그대로 참고
@@ -301,7 +307,9 @@ service/admin/
       to="/admin/notes"
       onClick={onClose}
       className={`... ${
-        location.pathname.startsWith('/admin/notes') || location.pathname === '/admin/deleted-notes'
+        location.pathname === '/admin/notes'
+          || location.pathname.startsWith('/admin/notes/')
+          || location.pathname === '/admin/deleted-notes'
           ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
           : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
       }`}

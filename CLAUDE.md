@@ -36,7 +36,7 @@ All source code lives under `my-site/src/`.
 ### Key directories
 
 - `router/index.tsx` — Route definitions (all wrapped in `MainLayout`)
-- `service/{feature}/pages/` — Page components per feature domain (home, student, guide, calculator, auth, admin)
+- `service/{feature}/pages/` — Page components per feature domain (home, student, guide, calculator, auth, admin, secretNote)
 - `service/{feature}/components/` — Feature-specific components (GuideCard, RichTextEditor, StudentCard)
 - `components/` — Shared components (Header, Sidebar, MainLayout, AdminRoute guard)
 - `repositories/` — Data access layer (Supabase for dynamic data, static JSON for game data)
@@ -68,6 +68,11 @@ All source code lives under `my-site/src/`.
 | `/admin/deleted-guides` | DeletedGuidesPage | AdminRoute |
 | `/admin/notices` | InternalNoticePage | EditorRoute |
 | `/admin/internal-categories` | InternalCategoryManagePage | AdminRoute |
+| `/n/:slug` | SecretNoteViewPage | — |
+| `/admin/notes` | SecretNoteManagePage | AdminRoute |
+| `/admin/notes/new` | SecretNoteFormPage | AdminRoute |
+| `/admin/notes/:id/edit` | SecretNoteFormPage | AdminRoute |
+| `/admin/deleted-notes` | DeletedNotesPage | AdminRoute |
 
 ### Role-based access
 
@@ -79,10 +84,11 @@ All source code lives under `my-site/src/`.
 
 - **Dynamic data** (guides, users, categories): Pages → Repositories → **Supabase** (PostgREST + JS SDK)
 - **Static game data** (characters, crafting): Pages → Repositories → Static JSON (`src/data/`)
-- Guide content is **Base64 encoded** before storage, decoded on read
-- Images stored in **Supabase Storage** (`guide-images` bucket)
+- Guide content is **Base64 encoded** before storage, decoded on read (same pattern for `secret_notes`)
+- Images stored in **Supabase Storage** (`guide-images` bucket; shared by guides and secret notes)
 - Deletes are **soft delete** (`deleted_at` column)
 - Guide edits tracked via `guide_logs` table
+- `secret_notes` uses a 12-char random slug (DB trigger) and is only reachable via `/n/:slug`; anon access goes through a `SECURITY DEFINER` RPC so the table itself stays admin-only
 
 ### Repositories
 
@@ -92,6 +98,7 @@ All source code lives under `my-site/src/`.
 | `guideRepository` | Supabase (SDK + REST) | Guide CRUD, image upload, audit logs |
 | `categoryRepository` | Supabase | Guide categories |
 | `internalCategoryRepository` | Supabase | Internal notice categories |
+| `secretNoteRepository` | Supabase (SDK + RPC) | Admin-only notes with public slug-based URL (`/n/:slug`). Anon 열람은 `get_secret_note_by_slug` RPC 만 노출 |
 | `studentRepository` | Static JSON | Character data from `character.json` |
 | `craftingRepository` | Static JSON | Crafting data from `crafting/*.json` |
 
@@ -104,6 +111,7 @@ All source code lives under `my-site/src/`.
 - `types/auth.ts` — UserRole, AuthUser, UserProfile
 - `types/student.ts` — Student, StudentDetail, StudentStats, StudentSkill, etc.
 - `types/guide.ts` — Category, Guide, GuideLog, GuideFormData
+- `types/secretNote.ts` — SecretNote, SecretNoteFormData
 - `types/crafting.ts` — CraftingNode, CraftingItem
 - `types/common.ts` — ApiResponse, AsyncState, RoutePath
 - Custom `AppError` class with error codes in `utils/AppError.ts`

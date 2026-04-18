@@ -20,6 +20,10 @@ import DeletedGuidesPage from '@/service/admin/pages/DeletedGuidesPage';
 import InternalNoticePage from '@/service/admin/pages/InternalNoticePage';
 import InternalCategoryManagePage from '@/service/admin/pages/InternalCategoryManagePage';
 import RerollPage from '@/service/reroll/pages/RerollPage';
+import SecretNoteViewPage from '@/service/secretNote/pages/SecretNoteViewPage';
+import SecretNoteManagePage from '@/service/admin/pages/SecretNoteManagePage';
+import SecretNoteFormPage from '@/service/admin/pages/SecretNoteFormPage';
+import DeletedNotesPage from '@/service/admin/pages/DeletedNotesPage';
 import AdminRoute, { EditorRoute } from '@/components/guards/AdminRoute';
 
 const GuideFormPage = lazy(() => import('@/service/guide/pages/GuideFormPage'));
@@ -61,6 +65,10 @@ export const router = createBrowserRouter([
       {
         path: 'reroll',
         element: <RerollPage />,
+      },
+      {
+        path: 'n/:slug',
+        element: <SecretNoteViewPage />,
       },
       {
         path: 'calculator/eligma',
@@ -113,6 +121,22 @@ export const router = createBrowserRouter([
       {
         path: 'admin/internal-categories',
         element: <AdminRoute><InternalCategoryManagePage /></AdminRoute>,
+      },
+      {
+        path: 'admin/notes',
+        element: <AdminRoute><SecretNoteManagePage /></AdminRoute>,
+      },
+      {
+        path: 'admin/notes/new',
+        element: <AdminRoute><SecretNoteFormPage /></AdminRoute>,
+      },
+      {
+        path: 'admin/notes/:id/edit',
+        element: <AdminRoute><SecretNoteFormPage /></AdminRoute>,
+      },
+      {
+        path: 'admin/deleted-notes',
+        element: <AdminRoute><DeletedNotesPage /></AdminRoute>,
       },
     ],
   },
