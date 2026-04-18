@@ -148,7 +148,7 @@ export default function InternalNoticePage() {
                   {canModify && (
                     <>
                       <Link
-                        to={`/guide/${guide.id}/edit`}
+                        to={`/guide/${guide.id}/edit?internal=true`}
                         className="px-1.5 md:px-2 py-0.5 md:py-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-400 text-xs font-medium rounded transition-colors"
                       >
                         수정

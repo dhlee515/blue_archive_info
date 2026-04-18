@@ -100,10 +100,18 @@ export default function GuideFormPage() {
     return <div className="text-center py-12 text-gray-400 dark:text-slate-400">데이터를 불러오는 중...</div>;
   }
 
+  const resourceLabel = isInternal ? '내부 공지' : '정보글';
+  const actionLabel = isEdit ? '수정' : '작성';
+
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight">
-        {isEdit ? '정보글 수정' : '정보글 작성'}
+      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight flex items-center gap-2">
+        {isInternal && (
+          <span className="text-xs px-1.5 py-0.5 bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 rounded font-bold">
+            내부
+          </span>
+        )}
+        {resourceLabel} {actionLabel}
       </h1>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-gray-200 dark:border-slate-700 p-4 md:p-6 flex flex-col gap-4 md:gap-5">
@@ -114,7 +122,7 @@ export default function GuideFormPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-slate-700 dark:text-slate-100"
-            placeholder="정보글 제목을 입력하세요"
+            placeholder={`${resourceLabel} 제목을 입력하세요`}
           />
         </div>
 

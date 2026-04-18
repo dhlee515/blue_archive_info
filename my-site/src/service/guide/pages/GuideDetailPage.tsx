@@ -126,7 +126,7 @@ export default function GuideDetailPage() {
         {canEdit() && (isAdmin() || guide.authorRole !== 'admin') && (
           <div className="p-4 md:p-6 border-t border-gray-200 dark:border-slate-700 flex flex-col md:flex-row gap-2 md:gap-3">
             <Link
-              to={`/guide/${guide.id}/edit`}
+              to={`/guide/${guide.id}/edit${guide.isInternal ? '?internal=true' : ''}`}
               className="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium rounded-lg transition-colors text-sm text-center"
             >
               수정

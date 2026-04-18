@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
 
 interface Props {
@@ -8,6 +8,9 @@ interface Props {
 
 export default function Sidebar({ isOpen, onClose }: Props) {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const isInternalContext = searchParams.get('internal') === 'true';
+  const isInternalActive = location.pathname === '/admin/notices' || isInternalContext;
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
 
@@ -50,7 +53,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                 to="/admin/notices"
                 onClick={onClose}
                 className={`px-4 py-2 rounded-md font-medium transition-colors block ${
-                  location.pathname === '/admin/notices'
+                  isInternalActive
                     ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300'
                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
                 }`}
@@ -90,7 +93,8 @@ export default function Sidebar({ isOpen, onClose }: Props) {
       {/* 하단: 메뉴 */}
       <h2 className="text-sm font-bold text-gray-400 dark:text-slate-400 uppercase mb-1 px-2">메뉴</h2>
       {navLinks.map((link) => {
-        const isActive = location.pathname === link.path || location.pathname.startsWith(link.path + '/');
+        const pathMatches = location.pathname === link.path || location.pathname.startsWith(link.path + '/');
+        const isActive = pathMatches && !(link.path === '/guide' && isInternalContext);
         return (
           <Link
             key={link.path}
