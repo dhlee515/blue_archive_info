@@ -1,6 +1,7 @@
-import type { SecretNote, SecretNoteFormData } from '@/types/secretNote';
+import type { NoteType, SecretNote, SecretNoteFormData } from '@/types/secretNote';
 import { supabase } from '@/lib/supabase';
 import { AppError } from '@/utils/AppError';
+import { getPlugin } from '@/service/secretNote/plugins/registry';
 
 function encodeContent(html: string): string {
   const bytes = new TextEncoder().encode(html);
@@ -66,12 +67,18 @@ export class SecretNoteRepository {
 
   /**
    * 새 비밀 노트를 작성합니다. (admin 전용)
+   * 플러그인이 pluginData → (content, structuredData) 로 직렬화합니다.
    * customSlug 가 비어있으면 DB 트리거가 자동으로 12자 랜덤 슬러그를 채웁니다.
    */
   static async createNote(formData: SecretNoteFormData, userId: string): Promise<SecretNote> {
+    const plugin = getPlugin(formData.noteType);
+    const { content, structuredData } = plugin.serialize(formData.pluginData);
+
     const insertData: Record<string, unknown> = {
       title: formData.title,
-      content: encodeContent(formData.content),
+      note_type: formData.noteType,
+      content: encodeContent(content),
+      structured_data: structuredData,
       author_id: userId,
     };
     if (formData.customSlug && formData.customSlug.trim()) {
@@ -93,9 +100,14 @@ export class SecretNoteRepository {
    * 비밀 노트를 수정합니다. (admin 전용)
    */
   static async updateNote(id: string, formData: SecretNoteFormData, _userId: string): Promise<SecretNote> {
+    const plugin = getPlugin(formData.noteType);
+    const { content, structuredData } = plugin.serialize(formData.pluginData);
+
     const updateData: Record<string, unknown> = {
       title: formData.title,
-      content: encodeContent(formData.content),
+      note_type: formData.noteType,
+      content: encodeContent(content),
+      structured_data: structuredData,
     };
     if (formData.customSlug && formData.customSlug.trim()) {
       updateData.slug = formData.customSlug.trim();
@@ -174,7 +186,9 @@ export class SecretNoteRepository {
       id: row.id as string,
       slug: row.slug as string,
       title: row.title as string,
-      content: decodeContent(row.content as string),
+      noteType: (row.note_type as NoteType) ?? 'free',
+      content: decodeContent((row.content as string) ?? ''),
+      structuredData: (row.structured_data as unknown) ?? null,
       authorId: (row.author_id as string) || undefined,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,

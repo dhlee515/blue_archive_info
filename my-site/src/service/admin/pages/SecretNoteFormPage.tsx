@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import type { NoteType, SecretNoteFormData } from '@/types/secretNote';
 import { SecretNoteRepository } from '@/repositories/secretNoteRepository';
 import { useAuthStore } from '@/stores/authStore';
-import RichTextEditor from '@/service/guide/components/RichTextEditor';
-import { uploadGuideImage } from '@/service/guide/utils/uploadGuideImage';
+import { getPlugin, ALL_PLUGINS } from '@/service/secretNote/plugins/registry';
 
 export default function SecretNoteFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -12,8 +12,9 @@ export default function SecretNoteFormPage() {
   const user = useAuthStore((s) => s.user);
 
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
   const [customSlug, setCustomSlug] = useState('');
+  const [noteType, setNoteType] = useState<NoteType>('free');
+  const [pluginData, setPluginData] = useState<unknown>(() => getPlugin('free').createEmpty());
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEdit);
 
@@ -23,8 +24,13 @@ export default function SecretNoteFormPage() {
       try {
         const note = await SecretNoteRepository.getNoteById(id);
         setTitle(note.title);
-        setContent(note.content);
         setCustomSlug(note.slug);
+        setNoteType(note.noteType);
+        const loaded = getPlugin(note.noteType).deserialize({
+          content: note.content,
+          structuredData: note.structuredData,
+        });
+        setPluginData(loaded);
       } catch (error) {
         console.error('Failed to fetch secret note:', error);
         navigate('/admin/notes');
@@ -42,9 +48,10 @@ export default function SecretNoteFormPage() {
 
     try {
       if (!user) throw new Error('로그인이 필요합니다.');
-      const formData = {
+      const formData: SecretNoteFormData = {
         title,
-        content,
+        noteType,
+        pluginData,
         customSlug: customSlug.trim() || undefined,
       };
 
@@ -62,9 +69,23 @@ export default function SecretNoteFormPage() {
     }
   };
 
+  const handleTypeChange = (newType: NoteType) => {
+    if (newType === noteType) return;
+    const currentJson = JSON.stringify(pluginData);
+    const emptyJson = JSON.stringify(getPlugin(noteType).createEmpty());
+    if (currentJson !== emptyJson) {
+      if (!confirm('작성 중인 내용이 초기화됩니다. 전환하시겠습니까?')) return;
+    }
+    setNoteType(newType);
+    setPluginData(getPlugin(newType).createEmpty());
+  };
+
   if (initialLoading) {
     return <div className="text-center py-12 text-gray-400 dark:text-slate-400">데이터를 불러오는 중...</div>;
   }
+
+  const plugin = getPlugin(noteType);
+  const Editor = plugin.Editor;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -73,6 +94,31 @@ export default function SecretNoteFormPage() {
       </h1>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-gray-200 dark:border-slate-700 p-4 md:p-6 flex flex-col gap-4 md:gap-5">
+        {ALL_PLUGINS.length > 1 && (
+          <div>
+            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">타입</label>
+            <div className="inline-flex gap-1 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg">
+              {ALL_PLUGINS.map((p) => {
+                const selected = p.type === noteType;
+                return (
+                  <button
+                    key={p.type}
+                    type="button"
+                    onClick={() => handleTypeChange(p.type)}
+                    className={`px-3 py-1.5 text-xs md:text-sm font-medium rounded-md transition-colors ${
+                      selected
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">제목</label>
           <input
@@ -102,7 +148,7 @@ export default function SecretNoteFormPage() {
 
         <div>
           <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">본문</label>
-          <RichTextEditor content={content} onChange={setContent} onImageUpload={uploadGuideImage} />
+          <Editor value={pluginData} onChange={setPluginData} />
         </div>
 
         <div className="flex flex-col md:flex-row gap-2 md:gap-3 pt-2">

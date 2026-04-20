@@ -89,6 +89,7 @@ All source code lives under `my-site/src/`.
 - Deletes are **soft delete** (`deleted_at` column)
 - Guide edits tracked via `guide_logs` table
 - `secret_notes` uses a 12-char random slug (DB trigger) and is only reachable via `/n/:slug`; anon access goes through a `SECURITY DEFINER` RPC so the table itself stays admin-only
+- `secret_notes` supports pluggable content types via `note_type` column (`'free' | 'rules'`). `free` stores Base64 HTML in `content`; `rules` stores a structured JSON in `structured_data`. Each type is encapsulated as a plugin under `service/secretNote/plugins/{type}/` (Editor + Viewer + serialize/deserialize). Adding a new type = create plugin file + one line in `plugins/registry.ts`
 
 ### Repositories
 
@@ -111,7 +112,7 @@ All source code lives under `my-site/src/`.
 - `types/auth.ts` — UserRole, AuthUser, UserProfile
 - `types/student.ts` — Student, StudentDetail, StudentStats, StudentSkill, etc.
 - `types/guide.ts` — Category, Guide, GuideLog, GuideFormData
-- `types/secretNote.ts` — SecretNote, SecretNoteFormData
+- `types/secretNote.ts` — SecretNote, SecretNoteFormData, NoteType, RulesData, RuleSection, RuleItem, RuleBanner, RuleColor, RuleIcon
 - `types/crafting.ts` — CraftingNode, CraftingItem
 - `types/common.ts` — ApiResponse, AsyncState, RoutePath
 - Custom `AppError` class with error codes in `utils/AppError.ts`

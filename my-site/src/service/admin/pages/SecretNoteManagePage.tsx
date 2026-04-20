@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import type { SecretNote } from '@/types/secretNote';
 import { SecretNoteRepository } from '@/repositories/secretNoteRepository';
+import { TypeBadge } from '@/service/secretNote/plugins/TypeBadge';
 
 export default function SecretNoteManagePage() {
   const [notes, setNotes] = useState<SecretNote[]>([]);
@@ -96,8 +97,9 @@ export default function SecretNoteManagePage() {
               key={note.id}
               className="px-3 md:px-4 py-2.5 md:py-3 border-b last:border-b-0 border-gray-100 dark:border-slate-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20"
             >
-              {/* 1줄: 제목 + 슬러그 */}
+              {/* 1줄: 타입 배지 + 제목 + 슬러그 */}
               <div className="flex items-center gap-2 min-w-0">
+                <TypeBadge noteType={note.noteType} />
                 <span className="font-medium text-gray-800 dark:text-slate-200 truncate text-sm md:text-base">
                   {note.title}
                 </span>

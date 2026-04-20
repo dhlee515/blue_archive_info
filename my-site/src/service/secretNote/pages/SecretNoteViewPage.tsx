@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
 import type { SecretNote } from '@/types/secretNote';
 import { SecretNoteRepository } from '@/repositories/secretNoteRepository';
-import DOMPurify from 'dompurify';
-import '@/styles/editor.css';
+import { getPlugin } from '@/service/secretNote/plugins/registry';
 
 export default function SecretNoteViewPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -49,29 +48,12 @@ export default function SecretNoteViewPage() {
     );
   }
 
-  return (
-    <div className="max-w-3xl mx-auto">
-      <article className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="p-4 md:p-6">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="text-xs text-gray-400 dark:text-slate-400">
-              {new Date(note.createdAt).toLocaleDateString('ko-KR')}
-            </span>
-            {note.updatedAt !== note.createdAt && (
-              <span className="text-xs text-gray-400 dark:text-slate-400">
-                (수정: {new Date(note.updatedAt).toLocaleDateString('ko-KR')})
-              </span>
-            )}
-          </div>
+  const plugin = getPlugin(note.noteType);
+  const data = plugin.deserialize({
+    content: note.content,
+    structuredData: note.structuredData,
+  });
+  const Viewer = plugin.Viewer;
 
-          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-slate-100 mb-4 md:mb-6">{note.title}</h1>
-
-          <div
-            className="tiptap-editor prose max-w-none text-gray-700 dark:text-slate-300"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
-          />
-        </div>
-      </article>
-    </div>
-  );
+  return <Viewer data={data} title={note.title} createdAt={note.createdAt} updatedAt={note.updatedAt} />;
 }
