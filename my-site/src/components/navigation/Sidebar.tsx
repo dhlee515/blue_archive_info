@@ -1,9 +1,52 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
+import { ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+}
+
+type NavLink = { name: string; path: string };
+type NavGroup = { name: string; children: NavLink[] };
+type NavItem = NavLink | NavGroup;
+
+const navItems: NavItem[] = [
+  { name: '대시보드', path: '/' },
+  {
+    name: '정보',
+    children: [
+      { name: '정보글',      path: '/guide' },
+      { name: '학생 목록',   path: '/students' },
+      { name: '리세계 추천', path: '/reroll' },
+    ],
+  },
+  {
+    name: '계산기',
+    children: [
+      { name: '엘리그마 계산기', path: '/calculator/eligma' },
+      { name: '제조 계산기',    path: '/calculator/crafting' },
+      { name: '이벤트 계산기',  path: '/calculator/event' },
+    ],
+  },
+];
+
+const STORAGE_KEY = 'sidebar.openGroups';
+const DEFAULT_OPEN: string[] = ['정보', '계산기'];
+
+function loadOpenGroups(): Set<string> {
+  if (typeof window === 'undefined') return new Set(DEFAULT_OPEN);
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return new Set(DEFAULT_OPEN);
 }
 
 export default function Sidebar({ isOpen, onClose }: Props) {
@@ -14,20 +57,62 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
 
-  const navLinks = [
-    { name: '대시보드', path: '/' },
-    { name: '정보글', path: '/guide' },
-    { name: '학생 목록', path: '/students' },
-    { name: '리세계 추천', path: '/reroll' },
-    { name: '엘리그마 계산기', path: '/calculator/eligma' },
-    { name: '제조 계산기', path: '/calculator/crafting' },
-    { name: '이벤트 계산기', path: '/calculator/event' },
-  ];
+  const [openGroups, setOpenGroups] = useState<Set<string>>(loadOpenGroups);
+
+  // 펼침 상태 영속화
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...openGroups]));
+    } catch {
+      // ignore storage errors
+    }
+  }, [openGroups]);
+
+  // 현재 경로가 그룹 하위에 있으면 해당 그룹 자동 펼침
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      navItems.forEach((item) => {
+        if ('children' in item) {
+          const active = item.children.some(
+            (c) => location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+          );
+          if (active && !next.has(item.name)) {
+            next.add(item.name);
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [location.pathname]);
+
+  const toggleGroup = (name: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const isActive = (path: string): boolean => {
+    if (path === '/') return location.pathname === '/';
+    const matched = location.pathname === path || location.pathname.startsWith(path + '/');
+    if (!matched) return false;
+    if (path === '/guide' && isInternalContext) return false;
+    return true;
+  };
 
   const handleSignOut = async () => {
     await signOut();
     onClose();
   };
+
+  const linkBase = 'px-4 py-2 rounded-md font-medium transition-colors block';
+  const linkActive = 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+  const linkIdle = 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100';
 
   const navContent = (
     <div className="p-4 flex flex-col gap-2 h-full">
@@ -107,23 +192,58 @@ export default function Sidebar({ isOpen, onClose }: Props) {
 
       {/* 하단: 메뉴 */}
       <h2 className="text-sm font-bold text-gray-400 dark:text-slate-400 uppercase mb-1 px-2">메뉴</h2>
-      {navLinks.map((link) => {
-        const pathMatches = location.pathname === link.path || location.pathname.startsWith(link.path + '/');
-        const isActive = pathMatches && !(link.path === '/guide' && isInternalContext);
+      {navItems.map((item) => {
+        if ('children' in item) {
+          const isOpenGroup = openGroups.has(item.name);
+          const groupActive = item.children.some((c) => isActive(c.path));
+          return (
+            <div key={item.name} className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => toggleGroup(item.name)}
+                aria-expanded={isOpenGroup}
+                className={`w-full flex items-center px-4 py-2 rounded-md font-medium transition-colors ${
+                  groupActive
+                    ? 'text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
+                }`}
+              >
+                <span className="flex-1 text-left">{item.name}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isOpenGroup ? '' : '-rotate-90'}`} />
+              </button>
+              {isOpenGroup && (
+                <div className="flex flex-col gap-1">
+                  {item.children.map((c) => {
+                    const active = isActive(c.path);
+                    return (
+                      <Link
+                        key={c.path}
+                        to={c.path}
+                        onClick={onClose}
+                        className={`pl-7 pr-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          active ? linkActive : linkIdle
+                        }`}
+                      >
+                        {c.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // 단일 링크
+        const active = isActive(item.path);
         return (
           <Link
-            key={link.path}
-            to={link.path}
+            key={item.path}
+            to={item.path}
             onClick={onClose}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              isActive && link.path !== '/'
-                ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                : location.pathname === '/' && link.path === '/'
-                  ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
-            }`}
+            className={`${linkBase} ${active ? linkActive : linkIdle}`}
           >
-            {link.name}
+            {item.name}
           </Link>
         );
       })}
