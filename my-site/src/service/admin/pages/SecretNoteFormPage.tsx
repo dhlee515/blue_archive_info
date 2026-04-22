@@ -89,9 +89,28 @@ export default function SecretNoteFormPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 mb-6 tracking-tight">
-        비밀 노트 {isEdit ? '수정' : '작성'}
-      </h1>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-3 mb-6">
+        <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 tracking-tight">
+          비밀 노트 {isEdit ? '수정' : '작성'}
+        </h1>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading || !title.trim()}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800 text-white font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors text-xs md:text-sm"
+          >
+            {loading ? '저장 중...' : isEdit ? '수정하기' : '작성하기'}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/notes')}
+            className="bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors text-xs md:text-sm"
+          >
+            취소
+          </button>
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-gray-200 dark:border-slate-700 p-4 md:p-6 flex flex-col gap-4 md:gap-5">
         {ALL_PLUGINS.length > 1 && (
@@ -149,24 +168,6 @@ export default function SecretNoteFormPage() {
         <div>
           <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">본문</label>
           <Editor value={pluginData} onChange={setPluginData} />
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-2 md:gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading || !title.trim()}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800 text-white font-bold py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
-          >
-            {loading ? '저장 중...' : isEdit ? '수정하기' : '작성하기'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/admin/notes')}
-            className="bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium py-2.5 md:py-3 px-5 md:px-6 rounded-lg transition-colors"
-          >
-            취소
-          </button>
         </div>
       </div>
     </div>

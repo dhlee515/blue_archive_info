@@ -160,9 +160,9 @@ export default function RulesEditor({ value, onChange }: Props) {
                   onChange={(e) => updateItem(sIdx, iIdx, { sub: e.target.value })}
                 />
                 <textarea
-                  className={inputCls}
+                  className={`${inputCls} resize-y`}
                   placeholder="본문 (선택) — 공개 뷰에서 행을 클릭하면 펼쳐집니다"
-                  rows={3}
+                  rows={6}
                   value={item.body ?? ''}
                   onChange={(e) => updateItem(sIdx, iIdx, { body: e.target.value })}
                 />
