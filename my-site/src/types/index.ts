@@ -35,6 +35,7 @@ export type {
   LevelRange,
   GearRange,
   WeaponRange,
+  WeaponStarRange,
   EquipmentTiers,
   PlannerTargets,
   PlannerStudent,

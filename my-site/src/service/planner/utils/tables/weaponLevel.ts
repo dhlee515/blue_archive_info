@@ -41,3 +41,40 @@ export const CUMULATIVE_WEAPON_EXP: readonly number[] = cumSum(weaponLevelData.e
 
 /** 누적 크레딧 — 같은 인덱싱 규칙. CUMULATIVE_WEAPON_CREDIT[60] = 8_928_900 */
 export const CUMULATIVE_WEAPON_CREDIT: readonly number[] = cumSum(weaponLevelData.creditDelta);
+
+/**
+ * 전무 성급 (1~8 통합 모델) → 도달 가능한 무기 레벨 max.
+ *   1~4 (학생 본체 성급) : 무기 미해금 → 0
+ *   5 (5성 / 전무 1성)   : 30
+ *   6 (전무 2성)         : 40
+ *   7 (전무 3성)         : 50
+ *   8 (전무 4성)         : 60
+ */
+export function getWeaponMaxLevelForStar(weaponStar: number): number {
+  if (weaponStar < 5) return 0;
+  return WEAPON_STAR_MAX_LEVELS[weaponStar - 4] ?? 0;
+}
+
+/**
+ * 전무 성급 → 그 단계가 시작되는 최소 무기 레벨.
+ *   1~4 : 미해금 → 0
+ *   5 (전무 1성) : 1 (해금 시점)
+ *   6 (전무 2성) : 30 (전무 1성 max 도달 후 진입)
+ *   7 (전무 3성) : 40
+ *   8 (전무 4성) : 50
+ */
+export function getWeaponMinLevelForStar(weaponStar: number): number {
+  if (weaponStar < 5) return 0;
+  if (weaponStar === 5) return 1;
+  return WEAPON_STAR_MAX_LEVELS[weaponStar - 5] ?? 0;
+}
+
+/**
+ * 다음 전무 성급으로 진입 가능한지.
+ * 학생 본체 성급(1~4)은 레벨 무관, 전무 1~4성(5~8)은 현재 성급의 max 레벨 도달이 조건.
+ */
+export function canAdvanceWeaponStar(weaponStar: number, currentLevel: number): boolean {
+  if (weaponStar >= 8) return false;
+  if (weaponStar < 5) return true;
+  return currentLevel >= getWeaponMaxLevelForStar(weaponStar);
+}

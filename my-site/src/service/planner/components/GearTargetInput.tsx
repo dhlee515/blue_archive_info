@@ -1,11 +1,10 @@
 import type { GearRange } from '@/types/planner';
 
-const GEAR_TIERS = [0, 1, 2, 3] as const;
+const GEAR_TIERS = [0, 1, 2] as const;
 const TIER_LABEL: Record<number, string> = {
   0: '미해금',
   1: 'T1',
   2: 'T2',
-  3: 'T3',
 };
 
 interface Props {

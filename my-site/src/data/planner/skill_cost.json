@@ -1,0 +1,16 @@
+{
+  "_comment": "스킬 강화 비용 (SchaleDB 외부). 기술노트/BD/오파츠 종류·수량은 SchaleDBStudent.SkillMaterial[Amount] / SkillExMaterial[Amount] 에서 직접 사용.",
+
+  "_normalSkillCreditNote": "기본/강화/서브 스킬 1→9 까지 8개 전이의 크레딧. 인덱스 i = 전이 (i+1) → (i+2). 학생별 동일.",
+  "normalSkillCredit": [5000, 8000, 60000, 90000, 300000, 450000, 1500000, 2400000],
+
+  "_normalSkillMasteryStepNote": "기본/강화/서브 스킬 9→10 (M단계). SchaleDB 에 없는 단계로 비의서(id 9999) 1개 + 크레딧 4M 만 소모.",
+  "normalSkillMasteryStep": {
+    "bookId": 9999,
+    "bookAmount": 1,
+    "credit": 4000000
+  },
+
+  "_exSkillCreditNote": "EX 스킬 1→5 까지 4개 전이의 크레딧. 인덱스 i = 전이 (i+1) → (i+2).",
+  "exSkillCredit": [80000, 500000, 3000000, 10000000]
+}

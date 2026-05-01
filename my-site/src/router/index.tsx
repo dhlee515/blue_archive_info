@@ -25,6 +25,7 @@ import SecretNoteManagePage from '@/service/admin/pages/SecretNoteManagePage';
 import SecretNoteFormPage from '@/service/admin/pages/SecretNoteFormPage';
 import DeletedNotesPage from '@/service/admin/pages/DeletedNotesPage';
 import CultivationPlannerPage from '@/service/planner/pages/CultivationPlannerPage';
+import PlannerStudentDetailPage from '@/service/planner/pages/PlannerStudentDetailPage';
 import InventoryPage from '@/service/planner/pages/InventoryPage';
 import AdminRoute, { EditorRoute, AuthRoute } from '@/components/guards/AdminRoute';
 
@@ -90,11 +91,15 @@ export const router = createBrowserRouter([
       },
       {
         path: 'planner/cultivation',
-        element: <AuthRoute><CultivationPlannerPage /></AuthRoute>,
+        element: <CultivationPlannerPage />,
+      },
+      {
+        path: 'planner/cultivation/:plannerStudentId',
+        element: <PlannerStudentDetailPage />,
       },
       {
         path: 'planner/inventory',
-        element: <AuthRoute><InventoryPage /></AuthRoute>,
+        element: <InventoryPage />,
       },
       {
         path: 'login',

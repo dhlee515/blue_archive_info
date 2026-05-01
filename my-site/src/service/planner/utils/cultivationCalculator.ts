@@ -24,8 +24,12 @@ import type {
   LevelRange,
   PlannerStudent,
   PlannerTargets,
+  PotentialsRange,
   RequiredMaterials,
+  SkillRange,
+  SkillsRange,
   WeaponRange,
+  WeaponStarRange,
 } from '@/types/planner';
 import {
   CUMULATIVE_STUDENT_CREDIT,
@@ -35,6 +39,23 @@ import {
   CUMULATIVE_WEAPON_CREDIT,
   CUMULATIVE_WEAPON_EXP,
 } from './tables/weaponLevel';
+import { CUMULATIVE_ELEPH, WEAPON_STAR_MAX } from './tables/weaponStar';
+import {
+  EX_SKILL_CREDIT_PER_STEP,
+  EX_SKILL_MAX,
+  NORMAL_SKILL_CREDIT_PER_STEP,
+  NORMAL_SKILL_MASTERY_STEP,
+  NORMAL_SKILL_MAX,
+} from './tables/skillCost';
+import {
+  LOWER_ARTIFACT_DELTA,
+  POTENTIAL_CREDIT_DELTA,
+  POTENTIAL_MAX,
+  REGULAR_ARTIFACT_DELTA,
+  WB_DELTA,
+  WB_ITEM_ID,
+  type PotentialStatKey,
+} from './tables/potentialLevel';
 
 /** 일반 장비 id → 장비 데이터 맵 (equipment.min.json 은 Record 형태) */
 export type EquipmentMap = Record<string, SchaleDBEquipment>;
@@ -130,6 +151,170 @@ export function calculateWeaponCost(
 
   addTo(out, 'weapon_exp', CUMULATIVE_WEAPON_EXP[to] - CUMULATIVE_WEAPON_EXP[from]);
   addTo(out, 'credit', CUMULATIVE_WEAPON_CREDIT[to] - CUMULATIVE_WEAPON_CREDIT[from]);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// 3-b) 고유무기 성급업 (학생 성급 1~4 + 전무 1~4 통합 1~8 단계)
+// ---------------------------------------------------------------------------
+
+/**
+ * 학생 성급 + 전무 성급 통합 단계 변경 시 필요한 엘레프 누적량.
+ * 키는 `String(student.Id)` — 학생 id 와 엘레프 item id 가 동일.
+ */
+export function calculateWeaponStarCost(
+  student: SchaleDBStudent,
+  range: WeaponStarRange,
+): RequiredMaterials {
+  const out: RequiredMaterials = {};
+  const from = Math.max(1, Math.min(WEAPON_STAR_MAX, range.current));
+  const to = Math.max(from, Math.min(WEAPON_STAR_MAX, range.target));
+  const elephAmount = CUMULATIVE_ELEPH[to] - CUMULATIVE_ELEPH[from];
+  if (elephAmount > 0) {
+    addTo(out, String(student.Id), elephAmount);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// 3-c) 스킬 강화 (EX + 기본/강화/서브)
+// ---------------------------------------------------------------------------
+
+/**
+ * SchaleDB 의 SkillMaterial / SkillExMaterial row (id 배열) 와 amount row 를 합쳐
+ * out 에 누적합니다. row 가 누락되면 무시.
+ */
+function addMaterialRow(
+  out: RequiredMaterials,
+  materials: number[][] | undefined,
+  amounts: number[][] | undefined,
+  rowIndex: number,
+): void {
+  if (!materials || !amounts) return;
+  const matRow = materials[rowIndex];
+  const amtRow = amounts[rowIndex];
+  if (!matRow || !amtRow) return;
+
+  for (let j = 0; j < matRow.length; j++) {
+    addTo(out, String(matRow[j]), amtRow[j] ?? 0);
+  }
+}
+
+/**
+ * EX 스킬 1~5 강화 비용. SkillExMaterial 4행 + EX_SKILL_CREDIT_PER_STEP 4개.
+ */
+export function calculateExSkillCost(
+  student: SchaleDBStudent,
+  range: SkillRange,
+): RequiredMaterials {
+  const out: RequiredMaterials = {};
+  const from = Math.max(1, Math.min(EX_SKILL_MAX, range.current));
+  const to = Math.max(from, Math.min(EX_SKILL_MAX, range.target));
+
+  for (let lv = from; lv < to; lv++) {
+    const idx = lv - 1; // 1→2 = idx 0 ... 4→5 = idx 3
+    addMaterialRow(out, student.SkillExMaterial, student.SkillExMaterialAmount, idx);
+    addTo(out, 'credit', EX_SKILL_CREDIT_PER_STEP[idx] ?? 0);
+  }
+  return out;
+}
+
+/**
+ * 일반 스킬 (기본/강화/서브 1종) 1~10 강화 비용.
+ *  - 1→9: SkillMaterial 8행 + NORMAL_SKILL_CREDIT_PER_STEP
+ *  - 9→10: NORMAL_SKILL_MASTERY_STEP (비의서 1 + 크레딧 4M)
+ */
+export function calculateNormalSkillCost(
+  student: SchaleDBStudent,
+  range: SkillRange,
+): RequiredMaterials {
+  const out: RequiredMaterials = {};
+  const from = Math.max(1, Math.min(NORMAL_SKILL_MAX, range.current));
+  const to = Math.max(from, Math.min(NORMAL_SKILL_MAX, range.target));
+
+  for (let lv = from; lv < to; lv++) {
+    const idx = lv - 1; // 1→2 = idx 0 ... 8→9 = idx 7, 9→10 은 SchaleDB 외부
+    if (lv < 9) {
+      addMaterialRow(out, student.SkillMaterial, student.SkillMaterialAmount, idx);
+      addTo(out, 'credit', NORMAL_SKILL_CREDIT_PER_STEP[idx] ?? 0);
+    } else {
+      // 9→10 (M단계)
+      addTo(out, String(NORMAL_SKILL_MASTERY_STEP.bookId), NORMAL_SKILL_MASTERY_STEP.bookAmount);
+      addTo(out, 'credit', NORMAL_SKILL_MASTERY_STEP.credit);
+    }
+  }
+  return out;
+}
+
+/**
+ * 4개 스킬 트랙 (EX/기본/강화/서브) 합산.
+ * 기본/강화/서브 는 동일 SkillMaterial 을 공유 (3종 동일 비용).
+ */
+export function calculateSkillsCost(
+  student: SchaleDBStudent,
+  skills: SkillsRange,
+): RequiredMaterials {
+  const out: RequiredMaterials = {};
+  mergeInto(out, calculateExSkillCost(student, skills.ex));
+  mergeInto(out, calculateNormalSkillCost(student, skills.normal));
+  mergeInto(out, calculateNormalSkillCost(student, skills.passive));
+  mergeInto(out, calculateNormalSkillCost(student, skills.sub));
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// 3-d) 잠재력 (WB) 강화
+// ---------------------------------------------------------------------------
+
+/**
+ * 잠재력 단일 스탯 강화 비용. delta 배열 합산.
+ *  - 하급 오파츠 = student.PotentialMaterial
+ *  - 일반 오파츠 = student.PotentialMaterial + 1
+ *  - WB = WB_ITEM_ID[stat]
+ *  - 크레딧 = synthetic 'credit'
+ *
+ * range.current = 0 (미강화) ~ 25, range.target = same.
+ * PotentialMaterial 이 없는 학생은 오파츠 비용 생략 (WB/크레딧 만 산정).
+ */
+function calculatePotentialStatCost(
+  student: SchaleDBStudent,
+  stat: PotentialStatKey,
+  range: { current: number; target: number },
+): RequiredMaterials {
+  const out: RequiredMaterials = {};
+  const from = Math.max(0, Math.min(POTENTIAL_MAX, range.current));
+  const to = Math.max(from, Math.min(POTENTIAL_MAX, range.target));
+  if (to === from) return out;
+
+  let lower = 0;
+  let regular = 0;
+  let wb = 0;
+  let credit = 0;
+  for (let lv = from + 1; lv <= to; lv++) {
+    lower += LOWER_ARTIFACT_DELTA[lv] ?? 0;
+    regular += REGULAR_ARTIFACT_DELTA[lv] ?? 0;
+    wb += WB_DELTA[lv] ?? 0;
+    credit += POTENTIAL_CREDIT_DELTA[lv] ?? 0;
+  }
+
+  if (student.PotentialMaterial !== undefined) {
+    addTo(out, String(student.PotentialMaterial), lower);
+    addTo(out, String(student.PotentialMaterial + 1), regular);
+  }
+  addTo(out, String(WB_ITEM_ID[stat]), wb);
+  addTo(out, 'credit', credit);
+  return out;
+}
+
+/** 3개 스탯 잠재력 합산 (체력/공격/치명) */
+export function calculatePotentialsCost(
+  student: SchaleDBStudent,
+  potentials: PotentialsRange,
+): RequiredMaterials {
+  const out: RequiredMaterials = {};
+  mergeInto(out, calculatePotentialStatCost(student, 'hp', potentials.hp));
+  mergeInto(out, calculatePotentialStatCost(student, 'attack', potentials.attack));
+  mergeInto(out, calculatePotentialStatCost(student, 'crit', potentials.crit));
   return out;
 }
 
@@ -242,6 +427,11 @@ export function aggregatePerStudent(
     mergeInto(out, calculateWeaponCost(student, targets.weapon));
   }
 
+  // 고유무기 성급 + 학생 성급 (엘레프)
+  if (targets.weaponStar) {
+    mergeInto(out, calculateWeaponStarCost(student, targets.weaponStar));
+  }
+
   // 일반 장비 (Equipment)
   if (targets.equipment && student.Equipment?.length) {
     mergeInto(
@@ -253,6 +443,16 @@ export function aggregatePerStudent(
         equipmentData,
       ),
     );
+  }
+
+  // 스킬 (EX + 기본/강화/서브)
+  if (targets.skills) {
+    mergeInto(out, calculateSkillsCost(student, targets.skills));
+  }
+
+  // 잠재력 (WB) — 체력/공격/치명
+  if (targets.potentials) {
+    mergeInto(out, calculatePotentialsCost(student, targets.potentials));
   }
 
   return out;

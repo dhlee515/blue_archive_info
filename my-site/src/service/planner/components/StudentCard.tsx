@@ -1,16 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Check, Loader2 } from 'lucide-react';
 import type { SchaleDBStudent } from '@/types/schaledb';
-import type { PlannerStudent, PlannerTargets, GearRange, WeaponRange, LevelRange, EquipmentTiers } from '@/types/planner';
+import type { PlannerStudent, PlannerTargets, GearRange, WeaponRange, WeaponStarRange, LevelRange, EquipmentTiers, SkillsRange, PotentialsRange } from '@/types/planner';
 import { studentIconUrl } from '@/lib/schaledbImage';
 import { WEAPON_PART_SERIES, getBonusSeriesIdsFor } from '../utils/expConversion';
+import { getWeaponMaxLevelForStar, getWeaponMinLevelForStar } from '../utils/tables/weaponLevel';
 import LevelTargetInput from './LevelTargetInput';
 import GearTargetInput from './GearTargetInput';
 import WeaponTargetInput from './WeaponTargetInput';
+import WeaponStarInput from './WeaponStarInput';
 import EquipmentTargetInput from './EquipmentTargetInput';
+import SkillTargetInput from './SkillTargetInput';
+import PotentialTargetInput from './PotentialTargetInput';
 
 const DEFAULT_GEAR: GearRange = { currentTier: 0, targetTier: 0 };
 const DEFAULT_WEAPON: WeaponRange = { currentLevel: 0, targetLevel: 0 };
+const DEFAULT_WEAPON_STAR: WeaponStarRange = { current: 1, target: 1 };
+const DEFAULT_SKILLS: SkillsRange = {
+  ex: { current: 1, target: 1 },
+  normal: { current: 1, target: 1 },
+  passive: { current: 1, target: 1 },
+  sub: { current: 1, target: 1 },
+};
+const DEFAULT_POTENTIALS: PotentialsRange = {
+  hp: { current: 0, target: 0 },
+  attack: { current: 0, target: 0 },
+  crit: { current: 0, target: 0 },
+};
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
@@ -27,7 +43,7 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
   const [status, setStatus] = useState<SaveStatus>('idle');
   const savedRef = useRef<PlannerTargets>(plannerStudent.targets);
 
-  // 디바운스 저장 (500ms)
+  // 디바운스 저장 (1500ms — egress 절감용. 슬라이더 드래그 같은 잦은 변경 시 last-write 만 저장)
   useEffect(() => {
     if (targets === savedRef.current) return;
 
@@ -41,7 +57,7 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
         console.error('플래너 저장 실패:', e);
         setStatus('idle');
       }
-    }, 500);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [targets, onSaveTargets, plannerStudent.id]);
@@ -62,8 +78,30 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
   const handleWeaponChange = (weapon: WeaponRange) => {
     setTargets((t) => ({ ...t, weapon }));
   };
+  const handleWeaponStarChange = (weaponStar: WeaponStarRange) => {
+    setTargets((t) => {
+      // 새 성급의 [min, max] 범위로 무기 레벨을 자동 보정.
+      // 예: 목표 단계를 "전무 2성" 으로 올리면 목표 무기 레벨이 30 미만이면 30 으로 끌어올림.
+      const newCurrentMin = getWeaponMinLevelForStar(weaponStar.current);
+      const newCurrentMax = getWeaponMaxLevelForStar(weaponStar.current);
+      const newTargetMin = getWeaponMinLevelForStar(weaponStar.target);
+      const newTargetMax = getWeaponMaxLevelForStar(weaponStar.target);
+      const prevWeapon = t.weapon ?? DEFAULT_WEAPON;
+      const clampedWeapon: WeaponRange = {
+        currentLevel: Math.max(newCurrentMin, Math.min(prevWeapon.currentLevel, newCurrentMax)),
+        targetLevel: Math.max(newTargetMin, Math.min(prevWeapon.targetLevel, newTargetMax)),
+      };
+      return { ...t, weaponStar, weapon: clampedWeapon };
+    });
+  };
   const handleEquipmentChange = (current: EquipmentTiers, target: EquipmentTiers) => {
     setTargets((t) => ({ ...t, equipment: { current, target } }));
+  };
+  const handleSkillsChange = (skills: SkillsRange) => {
+    setTargets((t) => ({ ...t, skills }));
+  };
+  const handlePotentialsChange = (potentials: PotentialsRange) => {
+    setTargets((t) => ({ ...t, potentials }));
   };
 
   const gearEnabled = student?.Gear?.TierUpMaterial && student.Gear.TierUpMaterial.length > 0;
@@ -117,7 +155,7 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
         </Section>
 
         {gearEnabled && (
-          <Section title="고유장비 (Gear)">
+          <Section title="애장품">
             <GearTargetInput
               value={targets.gear ?? DEFAULT_GEAR}
               onChange={handleGearChange}
@@ -133,7 +171,15 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
           )}
           <WeaponTargetInput
             value={targets.weapon ?? DEFAULT_WEAPON}
+            weaponStar={targets.weaponStar ?? DEFAULT_WEAPON_STAR}
             onChange={handleWeaponChange}
+          />
+        </Section>
+
+        <Section title="고유무기 성급 (학생 + 전무)">
+          <WeaponStarInput
+            value={targets.weaponStar ?? DEFAULT_WEAPON_STAR}
+            onChange={handleWeaponStarChange}
           />
         </Section>
 
@@ -147,6 +193,24 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
             />
           </Section>
         )}
+
+        <div className="md:col-span-2">
+          <Section title="스킬 (EX 1~5 / 기본·강화·서브 1~10)">
+            <SkillTargetInput
+              value={targets.skills ?? DEFAULT_SKILLS}
+              onChange={handleSkillsChange}
+            />
+          </Section>
+        </div>
+
+        <div className="md:col-span-2">
+          <Section title="잠재력 강화 (체력 / 공격 / 치명, 0~25)">
+            <PotentialTargetInput
+              value={targets.potentials ?? DEFAULT_POTENTIALS}
+              onChange={handlePotentialsChange}
+            />
+          </Section>
+        </div>
       </div>
     </div>
   );

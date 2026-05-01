@@ -8,9 +8,9 @@ export interface LevelRange {
   target: number;
 }
 
-/** 고유장비(Gear) 티어 범위 */
+/** 애장품(Gear) 티어 범위. 게임상 T1~T2 가 max (해금 + 1단계 강화). */
 export interface GearRange {
-  /** 현재 티어 (0 = 미해금, 1~3) */
+  /** 현재 티어 (0 = 미해금, 1~2) */
   currentTier: number;
   /** 목표 티어 */
   targetTier: number;
@@ -25,22 +25,71 @@ export interface WeaponRange {
 }
 
 /**
+ * 학생 성급 + 고유무기 성급을 통합한 1~8 단계 범위.
+ * 1~4 = 학생 성급 (1~4성), 5 = 5성 달성 (전무 1성 해금), 6~8 = 전무 2~4성.
+ * 모든 단계는 학생 고유 엘레프 (items id == student id) 를 사용.
+ */
+export interface WeaponStarRange {
+  /** 현재 단계 (1~8) */
+  current: number;
+  /** 목표 단계 (1~8) */
+  target: number;
+}
+
+/**
  * 일반 장비 슬롯별 티어 배열.
  * 배열 길이는 학생별 가변 — SchaleDBStudent.Equipment 의 길이와 일치 (보통 3).
  * 각 원소는 티어 값 (1 ~ 10).
  */
 export type EquipmentTiers = number[];
 
+/** 단일 스킬의 현재/목표 레벨 */
+export interface SkillRange {
+  current: number;
+  target: number;
+}
+
+/** 4개 스킬 트랙. EX 1~5, 그 외 1~10. */
+export interface SkillsRange {
+  /** EX 스킬 (1~5) */
+  ex: SkillRange;
+  /** 기본 스킬 (1~10) */
+  normal: SkillRange;
+  /** 강화 스킬 (1~10) */
+  passive: SkillRange;
+  /** 서브 스킬 (1~10) */
+  sub: SkillRange;
+}
+
+/** 단일 스탯 잠재력 (WB) 단계. 0 = 미강화, 1~25. */
+export interface PotentialRange {
+  current: number;
+  target: number;
+}
+
+/** 3개 스탯 잠재력 단계 (체력/공격/치명) */
+export interface PotentialsRange {
+  hp: PotentialRange;
+  attack: PotentialRange;
+  crit: PotentialRange;
+}
+
 /** 학생별 목표치 전체 — planner_students.targets 에 jsonb 직렬화 */
 export interface PlannerTargets {
   level: LevelRange;
   gear?: GearRange;
   weapon?: WeaponRange;
+  /** 학생 성급 + 전무 성급 통합 (1~8 단계, 엘레프 소비) */
+  weaponStar?: WeaponStarRange;
   equipment?: {
     current: EquipmentTiers;
     target: EquipmentTiers;
   };
-  // 향후 확장: skills, potential, bond
+  /** EX / 기본 / 강화 / 서브 스킬 레벨 */
+  skills?: SkillsRange;
+  /** 잠재력 (WB) 강화 — 체력/공격/치명 각각 0~25 단계 */
+  potentials?: PotentialsRange;
+  // 향후 확장: bond
 }
 
 /** 플래너에 담긴 학생 1건 */

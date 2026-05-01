@@ -41,8 +41,22 @@ export default function EquipmentTargetInput({ categories, current, target, onCh
     onChange(nextCurrent, next);
   };
 
+  const setAllTargetsMax = () => {
+    const nextTarget = categories.map(() => MAX_TIER);
+    onChange([...current], nextTarget);
+  };
+
   return (
     <div className="space-y-2">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={setAllTargetsMax}
+          className="px-2 py-0.5 text-[11px] font-bold rounded-md border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+        >
+          목표 Max
+        </button>
+      </div>
       {categories.map((cat, idx) => (
         <div key={`${cat}-${idx}`} className="flex items-center gap-2">
           <span className="w-14 shrink-0 text-xs font-bold text-gray-600 dark:text-slate-400">

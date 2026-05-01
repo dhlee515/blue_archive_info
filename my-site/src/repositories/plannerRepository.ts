@@ -53,25 +53,22 @@ export class PlannerRepository {
 
   /**
    * 플래너 학생의 목표치 / 순서를 갱신합니다.
+   * 응답 row 는 받지 않음 — egress 절감용 (caller 가 optimistic update 후 호출).
    */
   static async updateStudent(
     id: string,
     patch: { targets?: PlannerTargets; sortOrder?: number },
-  ): Promise<PlannerStudent> {
+  ): Promise<void> {
     const updateData: Record<string, unknown> = {};
     if (patch.targets !== undefined) updateData.targets = patch.targets;
     if (patch.sortOrder !== undefined) updateData.sort_order = patch.sortOrder;
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('planner_students')
       .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
-    if (error || !data) throw new AppError('플래너 학생 수정에 실패했습니다.', 'API_ERROR');
-
-    return PlannerRepository.toPlannerStudent(data);
+    if (error) throw new AppError('플래너 학생 수정에 실패했습니다.', 'API_ERROR');
   }
 
   /**

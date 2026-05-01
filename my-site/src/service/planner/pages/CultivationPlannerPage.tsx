@@ -1,14 +1,30 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Plus, Wallet } from 'lucide-react';
+import { Plus, Wallet, X } from 'lucide-react';
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAuthStore } from '@/stores/authStore';
 import { fetchSchaleDB } from '@/lib/schaledbCache';
-import { PlannerRepository } from '@/repositories/plannerRepository';
+import { studentIconUrl } from '@/lib/schaledbImage';
 import type { SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
 import type { InventoryMap, PlannerStudent, PlannerTargets } from '@/types/planner';
 import { aggregateAll, computeDeficit } from '../utils/cultivationCalculator';
 import { enrichInventoryWithSyntheticTotals } from '../utils/expConversion';
-import StudentCard from '../components/StudentCard';
+import { getPlannerRepo } from '../utils/plannerRepoFactory';
 import AddStudentModal from '../components/AddStudentModal';
 import DeficitPanel from '../components/DeficitPanel';
 
@@ -22,6 +38,8 @@ const DEFAULT_TARGETS: PlannerTargets = {
 
 export default function CultivationPlannerPage() {
   const user = useAuthStore((s) => s.user);
+  const repo = useMemo(() => getPlannerRepo(user?.id ?? null), [user?.id]);
+  const isGuest = !user;
 
   const [plannerStudents, setPlannerStudents] = useState<PlannerStudent[]>([]);
   const [studentsData, setStudentsData] = useState<StudentsMap>({});
@@ -33,8 +51,6 @@ export default function CultivationPlannerPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-
     let mounted = true;
     (async () => {
       try {
@@ -42,8 +58,8 @@ export default function CultivationPlannerPage() {
           fetchSchaleDB<StudentsMap>('students'),
           fetchSchaleDB<ItemsMap>('items'),
           fetchSchaleDB<EquipmentMap>('equipment'),
-          PlannerRepository.getStudents(user.id),
-          PlannerRepository.getInventory(user.id),
+          repo.getStudents(),
+          repo.getInventory(),
         ]);
         if (!mounted) return;
         setStudentsData(sd);
@@ -62,12 +78,11 @@ export default function CultivationPlannerPage() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [repo]);
 
   const handleAdd = async (studentId: number) => {
-    if (!user) return;
     try {
-      const added = await PlannerRepository.addStudent(user.id, studentId, DEFAULT_TARGETS);
+      const added = await repo.addStudent(studentId, DEFAULT_TARGETS);
       setPlannerStudents((prev) => [...prev, added]);
     } catch (e) {
       console.error(e);
@@ -75,22 +90,37 @@ export default function CultivationPlannerPage() {
     }
   };
 
-  const handleSaveTargets = useCallback(
-    async (id: string, targets: PlannerTargets) => {
-      setPlannerStudents((prev) => prev.map((s) => (s.id === id ? { ...s, targets } : s)));
-      await PlannerRepository.updateStudent(id, { targets });
-    },
-    [],
-  );
-
-  const handleRemove = async (id: string) => {
-    if (!confirm('플래너에서 이 학생을 제거하시겠습니까?')) return;
+  const handleRemove = async (id: string, name: string) => {
+    if (!confirm(`${name} 을(를) 플래너에서 제거하시겠습니까?`)) return;
     try {
-      await PlannerRepository.removeStudent(id);
+      await repo.removeStudent(id);
       setPlannerStudents((prev) => prev.filter((s) => s.id !== id));
     } catch (e) {
       console.error(e);
       alert('학생 제거에 실패했습니다.');
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = plannerStudents.findIndex((s) => s.id === active.id);
+    const newIndex = plannerStudents.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(plannerStudents, oldIndex, newIndex);
+    setPlannerStudents(reordered);
+
+    try {
+      await repo.reorderStudents(reordered.map((s) => s.id));
+    } catch (e) {
+      console.error(e);
+      // 실패 시 원복은 안 함 — 사용자가 다시 드래그하면 보정됨
     }
   };
 
@@ -128,6 +158,20 @@ export default function CultivationPlannerPage() {
         </button>
       </div>
 
+      {isGuest && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-2 rounded-lg mb-4 text-sm flex items-center justify-between gap-2">
+          <span>
+            로그인하지 않은 상태입니다. 데이터는 이 브라우저에만 저장되며 다른 기기에서는 보이지 않습니다.
+          </span>
+          <Link
+            to="/login"
+            className="shrink-0 font-bold text-amber-900 dark:text-amber-200 underline hover:no-underline"
+          >
+            로그인 →
+          </Link>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-4 rounded-lg mb-4">
           {error}
@@ -151,17 +195,25 @@ export default function CultivationPlannerPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 mb-6">
-            {plannerStudents.map((ps) => (
-              <StudentCard
-                key={ps.id}
-                plannerStudent={ps}
-                student={studentsData[String(ps.studentId)] ?? null}
-                onSaveTargets={handleSaveTargets}
-                onRemove={() => handleRemove(ps.id)}
-              />
-            ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={plannerStudents.map((s) => s.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 mb-6">
+                {plannerStudents.map((ps) => {
+                  const student = studentsData[String(ps.studentId)] ?? null;
+                  const name = student?.Name ?? `학생 #${ps.studentId}`;
+                  return (
+                    <SortableStudentIcon
+                      key={ps.id}
+                      id={ps.id}
+                      studentId={ps.studentId}
+                      name={name}
+                      onRemove={() => handleRemove(ps.id, name)}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           <div className="flex justify-end mb-3">
             <Link
@@ -189,6 +241,60 @@ export default function CultivationPlannerPage() {
           onAdd={handleAdd}
         />
       )}
+    </div>
+  );
+}
+
+interface SortableStudentIconProps {
+  id: string;
+  studentId: number;
+  name: string;
+  onRemove: () => void;
+}
+
+function SortableStudentIcon({ id, studentId, name, onRemove }: SortableStudentIconProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group touch-none">
+      <Link
+        to={`/planner/cultivation/${id}`}
+        {...attributes}
+        {...listeners}
+        className="block bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-2 shadow-sm hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
+      >
+        <img
+          src={studentIconUrl(studentId)}
+          alt={name}
+          className="w-full aspect-square rounded object-cover pointer-events-none"
+          draggable={false}
+        />
+        <div className="mt-1.5 text-xs text-center text-gray-700 dark:text-slate-300 truncate font-bold">
+          {name}
+        </div>
+      </Link>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="absolute top-1 right-1 p-0.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 transition-opacity shadow"
+        aria-label={`${name} 제거`}
+      >
+        <X size={14} />
+      </button>
     </div>
   );
 }

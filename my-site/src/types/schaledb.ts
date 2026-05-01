@@ -60,6 +60,20 @@ export interface SchaleDBStudent {
   IsLimited: number;
   Weapon: SchaleDBWeapon;
   Gear: SchaleDBGear;
+  /**
+   * 일반 스킬 (Normal/Passive/Sub) 단계별 재료 id 배열.
+   * 8행 구조 — §9 검증 완료. 각 행의 인덱스 i = "단계 (i+?) → (i+?)" — 정확한 매핑은 PR-V2#3 에서 게임 UI 와 대조 후 확정.
+   * 행마다 가변 길이 (예: `[4030]`, `[4032, 152, 151, 150]`).
+   */
+  SkillMaterial?: number[][];
+  /** SkillMaterial 과 1:1 대응 수량 배열 */
+  SkillMaterialAmount?: number[][];
+  /** EX 스킬 단계별 재료. 4행 = EX 1~5 → 4구간 */
+  SkillExMaterial?: number[][];
+  /** SkillExMaterial 과 1:1 대응 수량 */
+  SkillExMaterialAmount?: number[][];
+  /** 잠재력 강화 시 사용되는 학생별 보조 오파츠 단일 id (Material/Artifact). +1 = 일반 등급 (Rarity R) */
+  PotentialMaterial?: number;
 }
 
 /** SchaleDB 스킬 */
