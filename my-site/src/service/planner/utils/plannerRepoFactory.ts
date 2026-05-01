@@ -14,6 +14,10 @@ export interface PlannerRepo {
   ): Promise<void>;
   removeStudent(id: string): Promise<void>;
   reorderStudents(orderedIds: string[]): Promise<void>;
+  /** 모든 학생을 삭제하고 새 목록으로 교체 (import 용). */
+  replaceStudents(
+    students: Array<{ studentId: number; targets: PlannerTargets; sortOrder: number }>,
+  ): Promise<void>;
   getInventory(): Promise<InventoryMap>;
   updateInventory(items: InventoryMap): Promise<void>;
 }
@@ -26,6 +30,7 @@ export function getPlannerRepo(userId: string | null | undefined): PlannerRepo {
       updateStudent: (id, patch) => PlannerRepository.updateStudent(id, patch),
       removeStudent: (id) => PlannerRepository.removeStudent(id),
       reorderStudents: (ids) => PlannerRepository.reorderStudents(ids),
+      replaceStudents: (students) => PlannerRepository.replaceStudents(userId, students),
       getInventory: () => PlannerRepository.getInventory(userId),
       updateInventory: (items) => PlannerRepository.updateInventory(userId, items),
     };
@@ -36,6 +41,7 @@ export function getPlannerRepo(userId: string | null | undefined): PlannerRepo {
     updateStudent: (id, patch) => LocalPlannerRepository.updateStudent(id, patch),
     removeStudent: (id) => LocalPlannerRepository.removeStudent(id),
     reorderStudents: (ids) => LocalPlannerRepository.reorderStudents(ids),
+    replaceStudents: (students) => LocalPlannerRepository.replaceStudents(students),
     getInventory: () => LocalPlannerRepository.getInventory(),
     updateInventory: (items) => LocalPlannerRepository.updateInventory(items),
   };

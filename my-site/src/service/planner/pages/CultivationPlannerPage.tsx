@@ -26,6 +26,7 @@ import { aggregateAll, computeDeficit } from '../utils/cultivationCalculator';
 import { enrichInventoryWithSyntheticTotals } from '../utils/expConversion';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
 import AddStudentModal from '../components/AddStudentModal';
+import BackupButtons from '../components/BackupButtons';
 import DeficitPanel from '../components/DeficitPanel';
 
 type StudentsMap = Record<string, SchaleDBStudent>;
@@ -171,6 +172,19 @@ export default function CultivationPlannerPage() {
           </Link>
         </div>
       )}
+
+      <div className="mb-4">
+        <BackupButtons
+          repo={repo}
+          disabled={loading}
+          onAfterImport={async (backup) => {
+            // 학생 row 는 새 id 로 발급되므로 다시 fetch.
+            const fresh = await repo.getStudents();
+            setPlannerStudents(fresh);
+            setInventory(backup.inventory);
+          }}
+        />
+      </div>
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-4 rounded-lg mb-4">

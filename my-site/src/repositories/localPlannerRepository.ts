@@ -93,6 +93,29 @@ export class LocalPlannerRepository {
     writeState(state);
   }
 
+  /**
+   * 모든 학생을 삭제하고 새 학생 목록으로 교체합니다 (import 용).
+   */
+  static async replaceStudents(
+    students: Array<{ studentId: number; targets: PlannerTargets; sortOrder: number }>,
+  ): Promise<void> {
+    const state = readState();
+    const t = now();
+    state.students = students.map((s) => ({
+      id:
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      userId: LOCAL_USER_ID,
+      studentId: s.studentId,
+      targets: s.targets,
+      sortOrder: s.sortOrder,
+      createdAt: t,
+      updatedAt: t,
+    }));
+    writeState(state);
+  }
+
   static async reorderStudents(orderedIds: string[]): Promise<void> {
     const state = readState();
     const orderMap = new Map(orderedIds.map((id, i) => [id, i]));

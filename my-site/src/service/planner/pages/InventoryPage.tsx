@@ -8,6 +8,7 @@ import type { InventoryMap } from '@/types/planner';
 import { buildInventoryCatalog } from '../utils/inventoryCatalog';
 import { getMaterialInfo } from '../utils/materialInfo';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
+import BackupButtons from '../components/BackupButtons';
 import InventoryItemRow from '../components/InventoryItemRow';
 
 type ItemsMap = Record<string, SchaleDBItem>;
@@ -130,7 +131,7 @@ export default function InventoryPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between gap-2 mb-4">
         <div>
           <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-300 tracking-tight">
             재화 인벤토리
@@ -140,6 +141,17 @@ export default function InventoryPage() {
           </p>
         </div>
         <SaveBadge status={status} />
+      </div>
+
+      <div className="mb-4">
+        <BackupButtons
+          repo={repo}
+          disabled={loading}
+          onAfterImport={(backup) => {
+            setInventory(backup.inventory);
+            savedRef.current = backup.inventory;
+          }}
+        />
       </div>
 
       {isGuest && (

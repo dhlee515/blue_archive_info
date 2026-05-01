@@ -84,6 +84,34 @@ export class PlannerRepository {
   }
 
   /**
+   * 유저의 모든 학생을 삭제하고 새 학생 목록으로 교체합니다.
+   * import (백업 복원) 전용 — 기존 row 가 모두 사라지고 id 가 재발급됩니다.
+   */
+  static async replaceStudents(
+    userId: string,
+    students: Array<{ studentId: number; targets: PlannerTargets; sortOrder: number }>,
+  ): Promise<void> {
+    const { error: delError } = await supabase
+      .from('planner_students')
+      .delete()
+      .eq('user_id', userId);
+    if (delError) throw delError;
+
+    if (students.length === 0) return;
+
+    const rows = students.map((s) => ({
+      user_id: userId,
+      student_id: s.studentId,
+      targets: s.targets,
+      sort_order: s.sortOrder,
+    }));
+    const { error: insError } = await supabase.from('planner_students').insert(rows);
+    if (insError) {
+      throw new AppError('학생 데이터 가져오기에 실패했습니다.', 'API_ERROR');
+    }
+  }
+
+  /**
    * 플래너 학생 순서를 재정렬합니다.
    */
   static async reorderStudents(orderedIds: string[]): Promise<void> {
