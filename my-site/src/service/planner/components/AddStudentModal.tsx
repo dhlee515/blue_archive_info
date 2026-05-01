@@ -18,7 +18,6 @@ export default function AddStudentModal({ studentsData, existingStudentIds, onCl
     const arr = Object.values(studentsData);
     const q = search.trim().toLowerCase();
     return arr
-      .filter((s) => s.IsReleased?.[2] !== false) // KR 출시 우선
       .filter((s) => !q || s.Name.toLowerCase().includes(q))
       .sort((a, b) => a.DefaultOrder - b.DefaultOrder);
   }, [studentsData, search]);
