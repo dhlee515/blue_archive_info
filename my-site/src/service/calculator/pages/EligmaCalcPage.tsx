@@ -1,16 +1,8 @@
 import { useState } from 'react';
+import weaponStarData from '@/data/weapon_star.json';
 
-// 성급 상수 및 누적 엘레프 수치
-const STAR_LEVELS = [
-  { level: 1, label: '1성', cumulativeEleph: 0 },
-  { level: 2, label: '2성', cumulativeEleph: 30 },
-  { level: 3, label: '3성', cumulativeEleph: 110 },
-  { level: 4, label: '4성', cumulativeEleph: 210 },
-  { level: 5, label: '5성 / 전무 1성', cumulativeEleph: 330 },
-  { level: 6, label: '전무 2성', cumulativeEleph: 450 },
-  { level: 7, label: '전무 3성', cumulativeEleph: 630 },
-  { level: 8, label: '전무 4성', cumulativeEleph: 830 },
-];
+// 성급 상수 및 누적 엘레프 수치 (src/data/weapon_star.json)
+const STAR_LEVELS = weaponStarData.stars;
 
 // 엘리그마 소모량 계산 함수 (현재 가격 및 잔여 횟수 기반)
 function getEligmaCostByTier(

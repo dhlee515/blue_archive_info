@@ -30,10 +30,17 @@ const navItems: NavItem[] = [
       { name: '이벤트 계산기',  path: '/calculator/event' },
     ],
   },
+  {
+    name: '플래너',
+    children: [
+      { name: '육성 플래너',    path: '/planner/cultivation' },
+      { name: '재화 인벤토리',  path: '/planner/inventory' },
+    ],
+  },
 ];
 
 const STORAGE_KEY = 'sidebar.openGroups';
-const DEFAULT_OPEN: string[] = ['정보', '계산기'];
+const DEFAULT_OPEN: string[] = ['정보', '계산기', '플래너'];
 
 function loadOpenGroups(): Set<string> {
   if (typeof window === 'undefined') return new Set(DEFAULT_OPEN);

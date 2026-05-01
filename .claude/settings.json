@@ -1,7 +1,40 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:schaledb.com)",
+      "Bash(curl -sI \"https://schaledb.com/data/kr/common.min.json\")",
+      "Bash(curl -sI \"https://schaledb.com/data/common.min.json\")",
+      "Bash(curl -sI \"https://schaledb.com/data/kr/config.json\")",
+      "Bash(curl -s \"https://api.github.com/repos/SchaleDB/SchaleDB/contents/data\")",
+      "Bash(curl -sI \"https://schaledb.com/data/kr/\")",
+      "Bash(curl -sI \"https://schaledb.com/data/kr/students.min.json\")",
+      "Bash(curl -sI \"https://schaledb.com/data/config.min.json\")",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/Futottakakka/bluearchive-expcalc/main/calc.js\" -o /tmp/calc.js)",
+      "Read(//tmp/**)",
+      "Bash(curl -sLv \"https://raw.githubusercontent.com/Futottakakka/bluearchive-expcalc/main/calc.js\")",
+      "WebFetch(domain:futottakakka.github.io)",
+      "WebFetch(domain:sensei.lol)",
+      "Bash(node -e ' *)",
+      "Bash(mkdir -p /tmp/schaledb)",
+      "Bash(curl -sL \"https://schaledb.com/data/kr/equipment.min.json\" -o /tmp/schaledb/equipment.min.json)",
+      "Bash(curl -sL \"https://schaledb.com/data/kr/items.min.json\" -o /tmp/schaledb/items.min.json)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s \"https://schaledb.com/data/kr/equipment.min.json\" -o /tmp/schaledb_equipment.json)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('/tmp/schaledb_equipment.json'\\)\\); item=d.get\\('101009'\\); print\\(json.dumps\\(item, ensure_ascii=False, indent=2\\)\\)\")",
+      "Bash(curl -s \"https://schaledb.com/data/kr/items.min.json\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); vals=list\\(d.values\\(\\)\\) if isinstance\\(d,dict\\) else d; print\\(vals[0].get\\('Icon'\\), '|', vals[0].get\\('Name'\\)\\)\")",
+      "Bash(curl -s \"https://schaledb.com/data/kr/students.min.json\")",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s \"https://schaledb.com/data/kr/students.min.json\" -o students.json)",
+      "Bash(curl -s \"https://schaledb.com/data/kr/items.min.json\" -o items.json)",
+      "Bash(python3)",
+      "Bash(curl -sL https://schaledb.com/data/kr/items.min.json -o /tmp/ba_items.json)",
+      "Bash(curl -sL https://schaledb.com/data/kr/equipment.min.json -o /tmp/ba_equipment.json)",
+      "Bash(curl -sL https://schaledb.com/data/kr/currency.min.json -o /tmp/ba_currency.json)"
+    ],
+    "additionalDirectories": [
+      "/Users/runadum/scratchpad"
     ]
   }
 }

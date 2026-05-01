@@ -1,0 +1,12 @@
+{
+  "stars": [
+    { "level": 1, "label": "1성",            "cumulativeEleph": 0 },
+    { "level": 2, "label": "2성",            "cumulativeEleph": 30 },
+    { "level": 3, "label": "3성",            "cumulativeEleph": 110 },
+    { "level": 4, "label": "4성",            "cumulativeEleph": 210 },
+    { "level": 5, "label": "5성 / 전무 1성", "cumulativeEleph": 330 },
+    { "level": 6, "label": "전무 2성",       "cumulativeEleph": 450 },
+    { "level": 7, "label": "전무 3성",       "cumulativeEleph": 630 },
+    { "level": 8, "label": "전무 4성",       "cumulativeEleph": 830 }
+  ]
+}

@@ -106,3 +106,43 @@ export interface SchaleDBGear {
   TierUpMaterial?: number[][];
   TierUpMaterialAmount?: number[][];
 }
+
+/** SchaleDB 아이템 (items.min.json) */
+export interface SchaleDBItem {
+  Id: number;
+  Name: string;
+  Icon: string;
+  Rarity?: string;
+  /** 최상위 카테고리 — "SecretStone" | "Coin" | "Material" | "Collectible" | "Consumable" | "Favor" | "CharacterExpGrowth" */
+  Category?: string;
+  /** Material 카테고리의 서브 — "Artifact" | "BookItem" | "CDItem" 등 */
+  SubCategory?: string;
+}
+
+/** SchaleDB 일반 장비 (equipment.min.json) */
+export interface SchaleDBEquipment {
+  Id: number;
+  Name?: string;             // e.g. "게이밍 헬멧", "게이밍 헬멧 설계도면"
+  Category: string;          // "Hat", "Hairpin", "Badge", "Shoes", ...
+  Tier: number;              // 1 ~ 10
+  MaxLevel: number;          // 크래프트 가능한 장비는 10~70, piece(설계도면)는 1
+  Icon: string;
+  /** [[materialId, quantity], ...] — 하위 티어 장비/설계도면. piece 에는 존재하지 않음 */
+  Recipe?: [number, number][];
+  /** 제작 시 크레딧 비용 */
+  RecipeCost?: number;
+}
+
+/** SchaleDB 지역 설정 — config.min.json 의 Regions 배열 요소 */
+export interface SchaleDBRegion {
+  StudentMaxLevel: number;
+  WeaponMaxLevel: number;
+  EquipmentMaxLevel: number[];
+  BondMaxLevel: number;
+  PotentialMax: number;
+}
+
+/** SchaleDB 공통 설정 (config.min.json) */
+export interface SchaleDBConfig {
+  Regions: SchaleDBRegion[];
+}

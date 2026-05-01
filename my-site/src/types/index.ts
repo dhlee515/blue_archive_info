@@ -14,7 +14,7 @@ export type {
   StudentWeapon,
   StudentTerrain,
 } from './student';
-export type { SchaleDBStudent } from './schaledb';
+export type { SchaleDBStudent, SchaleDBEquipment, SchaleDBItem, SchaleDBRegion, SchaleDBConfig } from './schaledb';
 export type { CraftingNode, CraftingItem } from './crafting';
 export type { Guide, GuideFormData, Category, GuideLog } from './guide';
 export type {
@@ -31,3 +31,14 @@ export type {
 export type { AuthUser, UserRole, UserProfile } from './auth';
 export type { RerollCategory, RerollStudent } from './reroll';
 export type { EventArchetypeId, EventConfig, PointEventConfig, ExchangeEventConfig, CardMatchingConfig, CardType, CardRarity } from './event';
+export type {
+  LevelRange,
+  GearRange,
+  WeaponRange,
+  EquipmentTiers,
+  PlannerTargets,
+  PlannerStudent,
+  InventoryMap,
+  RequiredMaterials,
+  DeficitReport,
+} from './planner';

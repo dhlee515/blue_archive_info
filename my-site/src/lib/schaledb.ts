@@ -12,6 +12,8 @@ export const SCHALEDB_ENDPOINTS = {
   currency: `${BASE_URL}/data/${DATA_LANG}/currency.min.json`,
   furniture: `${BASE_URL}/data/${DATA_LANG}/furniture.min.json`,
   localization: `${BASE_URL}/data/${DATA_LANG}/localization.min.json`,
+  // 언어 중립 공통 설정 (Regions, StudentMaxLevel 등) — /data/kr/ 하위 아님
+  config: `${BASE_URL}/data/config.min.json`,
 } as const;
 
 /** SchaleDB 이미지 베이스 URL */

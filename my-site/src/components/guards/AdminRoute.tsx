@@ -36,3 +36,19 @@ export function EditorRoute({ children }: Props) {
 
   return <>{children}</>;
 }
+
+/** 로그인 가드 (pending 제외) */
+export function AuthRoute({ children }: Props) {
+  const user = useAuthStore((s) => s.user);
+  const isLoading = useAuthStore((s) => s.isLoading);
+
+  if (isLoading) {
+    return <div className="text-center py-12 text-gray-400 dark:text-slate-400">확인 중...</div>;
+  }
+
+  if (!user || user.role === 'pending') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}

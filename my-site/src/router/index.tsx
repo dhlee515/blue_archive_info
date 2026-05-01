@@ -24,7 +24,9 @@ import SecretNoteViewPage from '@/service/secretNote/pages/SecretNoteViewPage';
 import SecretNoteManagePage from '@/service/admin/pages/SecretNoteManagePage';
 import SecretNoteFormPage from '@/service/admin/pages/SecretNoteFormPage';
 import DeletedNotesPage from '@/service/admin/pages/DeletedNotesPage';
-import AdminRoute, { EditorRoute } from '@/components/guards/AdminRoute';
+import CultivationPlannerPage from '@/service/planner/pages/CultivationPlannerPage';
+import InventoryPage from '@/service/planner/pages/InventoryPage';
+import AdminRoute, { EditorRoute, AuthRoute } from '@/components/guards/AdminRoute';
 
 const GuideFormPage = lazy(() => import('@/service/guide/pages/GuideFormPage'));
 const LazyGuideForm = () => <Suspense fallback={<div className="text-center py-12 text-gray-400">로딩 중...</div>}><GuideFormPage /></Suspense>;
@@ -85,6 +87,14 @@ export const router = createBrowserRouter([
       {
         path: 'calculator/event/:eventId',
         element: <EventCalcDetailPage />,
+      },
+      {
+        path: 'planner/cultivation',
+        element: <AuthRoute><CultivationPlannerPage /></AuthRoute>,
+      },
+      {
+        path: 'planner/inventory',
+        element: <AuthRoute><InventoryPage /></AuthRoute>,
       },
       {
         path: 'login',

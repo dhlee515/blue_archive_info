@@ -59,6 +59,10 @@ All source code lives under `my-site/src/`.
 | `/guide/:id/edit` | GuideFormPage (lazy) | EditorRoute |
 | `/calculator/eligma` | EligmaCalcPage | — |
 | `/calculator/crafting` | CraftingCalcPage | — |
+| `/calculator/event` | EventCalcHubPage | — |
+| `/calculator/event/:eventId` | EventCalcDetailPage | — |
+| `/planner/cultivation` | CultivationPlannerPage | AuthRoute |
+| `/planner/inventory` | InventoryPage | AuthRoute |
 | `/login` | LoginPage | — |
 | `/signup` | SignUpPage | — |
 | `/mypage` | MyPage | — |
@@ -79,6 +83,7 @@ All source code lives under `my-site/src/`.
 4 roles: `admin`, `editor`, `user`, `pending`
 - **AdminRoute** — admin only
 - **EditorRoute** — admin + editor
+- **AuthRoute** — any logged-in user (excludes `pending`)
 
 ### Data flow
 
@@ -100,6 +105,7 @@ All source code lives under `my-site/src/`.
 | `categoryRepository` | Supabase | Guide categories |
 | `internalCategoryRepository` | Supabase | Internal notice categories |
 | `secretNoteRepository` | Supabase (SDK + RPC) | Admin-only notes with public slug-based URL (`/n/:slug`). Anon 열람은 `get_secret_note_by_slug` RPC 만 노출 |
+| `plannerRepository` | Supabase | User-scoped cultivation planner: `planner_students` (1:N) + `planner_inventory` (1:1 jsonb). RLS `user_id = auth.uid()` |
 | `studentRepository` | Static JSON | Character data from `character.json` |
 | `craftingRepository` | Static JSON | Crafting data from `crafting/*.json` |
 
