@@ -1,0 +1,66 @@
+[
+  {
+    "key": "fest",
+    "label": "페스 학생",
+    "students": [
+      { "schaleId": 10074, "highlighted": true },
+      { "schaleId": 20048, "highlighted": true },
+      { "schaleId": 20041, "highlighted": true },
+      { "schaleId": 10045, "highlighted": true },
+      { "schaleId": 10135, "highlighted": true },
+      { "schaleId": 10098, "highlighted": false },
+      { "schaleId": 10134, "highlighted": false },
+      { "schaleId": 10086, "highlighted": false },
+      { "schaleId": 10122, "highlighted": false },
+      { "schaleId": 10111, "highlighted": false },
+      { "schaleId": 10100, "highlighted": false },
+      { "schaleId": 10059, "highlighted": false },
+      { "schaleId": 10033, "highlighted": false }
+    ]
+  },
+  {
+    "key": "limited",
+    "label": "한정 학생",
+    "students": [
+      { "schaleId": 10105, "highlighted": true },
+      { "schaleId": 10110, "highlighted": true },
+      { "schaleId": 10123, "highlighted": false },
+      { "schaleId": 10129, "highlighted": false },
+      { "schaleId": 10117, "highlighted": false },
+      { "schaleId": 10139, "highlighted": false },
+      { "schaleId": 20051, "highlighted": false },
+      { "schaleId": 10106, "highlighted": false },
+      { "schaleId": 10053, "highlighted": false }
+    ]
+  },
+  {
+    "key": "normal",
+    "label": "통상 학생",
+    "students": [
+      { "schaleId": 10085, "highlighted": true },
+      { "schaleId": 10089, "highlighted": true },
+      { "schaleId": 20027, "highlighted": false },
+      { "schaleId": 10064, "highlighted": false },
+      { "schaleId": 10058, "highlighted": false },
+      { "schaleId": 10096, "highlighted": false },
+      { "schaleId": 10050, "highlighted": false },
+      { "schaleId": 20020, "highlighted": false }
+    ]
+  },
+  {
+    "key": "archive",
+    "label": "아카이브",
+    "students": [
+      { "schaleId": 20008, "highlighted": false },
+      { "schaleId": 10017, "highlighted": false },
+      { "schaleId": 10011, "highlighted": false }
+    ]
+  },
+  {
+    "key": "god",
+    "label": "신",
+    "students": [
+      { "schaleId": 20039, "highlighted": true }
+    ]
+  }
+]

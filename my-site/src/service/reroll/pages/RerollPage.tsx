@@ -1,15 +1,51 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router';
 import { domToPng } from 'modern-screenshot';
 import { StudentRepository } from '@/repositories/studentRepository';
 import type { Student } from '@/types/student';
-import type { RerollCategory } from '@/types/reroll';
+import type { RerollCategory, RerollRegion } from '@/types/reroll';
+import { REROLL_REGIONS, normalizeRerollRegion } from '@/types/reroll';
 import RerollCategoryRow from '../components/RerollCategoryRow';
-import rerollData from '@/data/reroll.json';
+import rerollDataKr from '@/data/reroll.kr.json';
+import rerollDataJp from '@/data/reroll.jp.json';
 import studentAliases from '@/data/studentAliases.json';
 
+const REGION_STORAGE_KEY = 'reroll.region';
+
+const REROLL_DATA: Record<RerollRegion, RerollCategory[]> = {
+  kr: rerollDataKr as RerollCategory[],
+  jp: rerollDataJp as RerollCategory[],
+};
+
+const REGION_LABEL: Record<RerollRegion, string> = {
+  kr: '한섭',
+  jp: '일섭',
+};
+
 export default function RerollPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // URL ?region= → localStorage → 기본 'kr'
+  const region: RerollRegion = useMemo(() => {
+    const fromUrl = searchParams.get('region');
+    if (fromUrl) return normalizeRerollRegion(fromUrl);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(REGION_STORAGE_KEY);
+      if (stored) return normalizeRerollRegion(stored);
+    }
+    return 'kr';
+  }, [searchParams]);
+
+  // localStorage 동기화
+  useEffect(() => {
+    try {
+      localStorage.setItem(REGION_STORAGE_KEY, region);
+    } catch {
+      // 무시 (privacy mode 등)
+    }
+  }, [region]);
+
   const [students, setStudents] = useState<Map<number, Student>>(new Map());
-  const [nameToId, setNameToId] = useState<Map<string, number>>(new Map());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [inputText, setInputText] = useState('');
   const [pyroxene, setPyroxene] = useState('');
@@ -18,28 +54,47 @@ export default function RerollPage() {
   const [capturing, setCapturing] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
 
-  // 표에 있는 모든 schaleId 수집
-  const allRerollIds = new Set(
-    (rerollData as RerollCategory[]).flatMap((cat) => cat.students.map((s) => s.schaleId)),
+  const handleRegionChange = (next: RerollRegion) => {
+    if (next === region) return;
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('region', next);
+      return params;
+    });
+    setSelectedIds(new Set()); // 학생 풀이 다르므로 선택 초기화
+  };
+
+  // 현재 region 의 데이터
+  const rerollData = REROLL_DATA[region];
+
+  // 표에 있는 모든 schaleId 수집 (region 별)
+  const allRerollIds = useMemo(
+    () => new Set(rerollData.flatMap((cat) => cat.students.map((s) => s.schaleId))),
+    [rerollData],
   );
 
+  // 학생 데이터는 한 번만 fetch
   useEffect(() => {
     StudentRepository.getStudents().then((list) => {
       const idMap = new Map<number, Student>();
-      const nMap = new Map<string, number>();
       for (const s of list) {
         idMap.set(s.schaleId, s);
-        // 표에 있는 학생만 이름 매핑
-        if (allRerollIds.has(s.schaleId)) {
-          nMap.set(s.name, s.schaleId);
-        }
       }
       setStudents(idMap);
-      setNameToId(nMap);
       setLoading(false);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 이름 → schaleId 매핑은 region 변경 시 재계산 (표에 있는 학생만)
+  const nameToId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of students.values()) {
+      if (allRerollIds.has(s.schaleId)) {
+        m.set(s.name, s.schaleId);
+      }
+    }
+    return m;
+  }, [students, allRerollIds]);
 
   const handleToggle = useCallback((schaleId: number) => {
     setSelectedIds((prev) => {
@@ -139,7 +194,7 @@ export default function RerollPage() {
 
       const today = new Date().toISOString().slice(0, 10);
       const link = document.createElement('a');
-      link.download = `리세계_추천_${today}.png`;
+      link.download = `리세계_추천_${region.toUpperCase()}_${today}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
@@ -154,9 +209,7 @@ export default function RerollPage() {
     }
   };
 
-  const categories = rerollData as RerollCategory[];
-
-  const resolvedCategories = categories.map((cat) => ({
+  const resolvedCategories = rerollData.map((cat) => ({
     ...cat,
     students: cat.students
       .map((rs) => {
@@ -195,6 +248,27 @@ export default function RerollPage() {
         </button>
       </div>
 
+      {/* 한섭 / 일섭 탭 */}
+      <div className="flex gap-1 mb-4 border-b border-gray-200 dark:border-slate-700">
+        {REROLL_REGIONS.map((r) => {
+          const active = r.key === region;
+          return (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => handleRegionChange(r.key)}
+              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-colors ${
+                active
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+              }`}
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* 보유 학생 입력 */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input
@@ -229,7 +303,7 @@ export default function RerollPage() {
         {/* 캡처 이미지 제목 */}
         <div className="text-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700">
           <h2 className="text-lg font-bold text-gray-800 dark:text-slate-200">
-            리세계 추천 학생
+            리세계 추천 학생 ({REGION_LABEL[region]})
           </h2>
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
             빨간 테두리 = 최우선 추천
