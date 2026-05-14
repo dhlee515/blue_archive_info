@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { Check, Loader2, Search, X } from 'lucide-react';
+import { Check, Loader2, Search, X, ScanLine } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { fetchSchaleDB } from '@/lib/schaledbCache';
+import { isTauri } from '@/lib/runtime';
 import type { SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
 import type { InventoryMap } from '@/types/planner';
 import { buildInventoryCatalog } from '../utils/inventoryCatalog';
@@ -10,6 +11,7 @@ import { getMaterialInfo } from '../utils/materialInfo';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
 import BackupButtons from '../components/BackupButtons';
 import InventoryItemRow from '../components/InventoryItemRow';
+import OcrImportDialog from '../components/OcrImportDialog';
 
 type ItemsMap = Record<string, SchaleDBItem>;
 type EquipmentMap = Record<string, SchaleDBEquipment>;
@@ -30,6 +32,7 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('');
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<SaveStatus>('idle');
+  const [ocrOpen, setOcrOpen] = useState(false);
 
   const savedRef = useRef<InventoryMap>({});
 
@@ -90,6 +93,17 @@ export default function InventoryPage() {
     [equipmentData, studentsData, itemsData],
   );
 
+  // OCR 매칭용 — 모든 인벤토리 키 → MaterialInfo 맵
+  const inventoryInfoMap = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof getMaterialInfo>>();
+    for (const g of catalog) {
+      for (const k of g.keys) {
+        if (!m.has(k)) m.set(k, getMaterialInfo(k, itemsData, equipmentData));
+      }
+    }
+    return m;
+  }, [catalog, itemsData, equipmentData]);
+
   const toggleCategory = (id: string) => {
     setSelectedGroupIds((prev) => {
       const next = new Set(prev);
@@ -143,7 +157,7 @@ export default function InventoryPage() {
         <SaveBadge status={status} />
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <BackupButtons
           repo={repo}
           disabled={loading}
@@ -152,6 +166,17 @@ export default function InventoryPage() {
             savedRef.current = backup.inventory;
           }}
         />
+        {isTauri() && (
+          <button
+            type="button"
+            onClick={() => setOcrOpen(true)}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-200 dark:border-purple-800 disabled:opacity-50 text-sm font-medium"
+            title="인게임 캡처 이미지에서 항목/수량 자동 추출 (데스크탑 전용)"
+          >
+            <ScanLine size={16} /> 이미지에서 가져오기
+          </button>
+        )}
       </div>
 
       {isGuest && (
@@ -243,6 +268,18 @@ export default function InventoryPage() {
             );
           })}
         </div>
+      )}
+
+      {ocrOpen && (
+        <OcrImportDialog
+          catalog={inventoryInfoMap}
+          currentInventory={inventory}
+          onClose={() => setOcrOpen(false)}
+          onApply={(next) => {
+            setInventory(next);
+            setOcrOpen(false);
+          }}
+        />
       )}
     </div>
   );

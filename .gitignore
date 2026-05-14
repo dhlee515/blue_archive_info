@@ -4,3 +4,11 @@ dist
 *.local
 .env
 .env.local
+
+# Python (OCR tools)
+my-site/tools/ocr/venv/
+my-site/tools/**/__pycache__/
+my-site/tools/**/*.pyc
+
+# minisign private key (절대 commit 금지)
+*.key

@@ -1,0 +1,79 @@
+name: Release
+
+# git tag v0.1.0 → push → 3 OS 빌드 자동 + Release 자동 생성 + 자동 업데이트용 latest.json + .sig 첨부
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'   # Apple Silicon (M1+)
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest'   # Intel
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './my-site/src-tauri -> target'
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install npm deps
+        run: npm ci
+        working-directory: ./my-site
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: ./my-site
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Blue Archive Info ${{ github.ref_name }}'
+          releaseBody: |
+            ## 다운로드
+
+            - **macOS (Apple Silicon)**: `_aarch64.dmg`
+            - **macOS (Intel)**: `_x64.dmg`
+            - **Windows**: `_x64-setup.exe` 또는 `_x64_en-US.msi`
+            - **Linux**: `_amd64.deb` 또는 `_amd64.AppImage`
+
+            첫 실행 시 OS 보안 경고가 뜰 수 있습니다. README 의 "설치 가이드" 참고.
+
+            기존 사용자는 앱 내 자동 업데이트 알림으로 적용됩니다.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: ${{ matrix.args }}

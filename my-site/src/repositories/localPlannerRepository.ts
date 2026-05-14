@@ -1,10 +1,13 @@
 // 비로그인 사용자용 플래너 저장소.
 //
-// localStorage 단일 키 'planner.local.v1' 에 학생 + 인벤토리를 함께 보관합니다.
-// PlannerRepository 와 동일 인터페이스 (단, userId 인자 없음 — 게스트는 본인 단말 1개).
+// 단일 키 'planner.local.v1' 에 학생 + 인벤토리를 함께 보관합니다.
+// 백엔드는 KVStore 추상화를 통해 환경에 맞게 자동 선택됨:
+//   - 웹: localStorage
+//   - Tauri (데스크탑): @tauri-apps/plugin-store (파일시스템 JSON)
 
 import type { InventoryMap, PlannerStudent, PlannerTargets } from '@/types/planner';
 import { AppError } from '@/utils/AppError';
+import { kvstore } from '@/lib/kvstore';
 
 const STORAGE_KEY = 'planner.local.v1';
 const LOCAL_USER_ID = '__local__';
@@ -14,11 +17,10 @@ interface LocalState {
   inventory: InventoryMap;
 }
 
-function readState(): LocalState {
+async function readState(): Promise<LocalState> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { students: [], inventory: {} };
-    const parsed = JSON.parse(raw);
+    const parsed = await kvstore.get<Partial<LocalState>>(STORAGE_KEY);
+    if (!parsed) return { students: [], inventory: {} };
     return {
       students: Array.isArray(parsed.students) ? parsed.students : [],
       inventory:
@@ -31,22 +33,28 @@ function readState(): LocalState {
   }
 }
 
-function writeState(state: LocalState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+async function writeState(state: LocalState): Promise<void> {
+  await kvstore.set(STORAGE_KEY, state);
 }
 
 const now = () => new Date().toISOString();
 
+const newId = (): string =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 export class LocalPlannerRepository {
   static async getStudents(): Promise<PlannerStudent[]> {
-    return [...readState().students].sort((a, b) => a.sortOrder - b.sortOrder);
+    const state = await readState();
+    return [...state.students].sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
   static async addStudent(
     studentId: number,
     targets: PlannerTargets,
   ): Promise<PlannerStudent> {
-    const state = readState();
+    const state = await readState();
     if (state.students.some((s) => s.studentId === studentId)) {
       throw new AppError('이미 플래너에 추가된 학생입니다.', 'API_ERROR');
     }
@@ -54,10 +62,7 @@ export class LocalPlannerRepository {
       state.students.length > 0 ? Math.max(...state.students.map((s) => s.sortOrder)) : -1;
     const t = now();
     const newStudent: PlannerStudent = {
-      id:
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: newId(),
       userId: LOCAL_USER_ID,
       studentId,
       targets,
@@ -66,7 +71,7 @@ export class LocalPlannerRepository {
       updatedAt: t,
     };
     state.students.push(newStudent);
-    writeState(state);
+    await writeState(state);
     return newStudent;
   }
 
@@ -74,7 +79,7 @@ export class LocalPlannerRepository {
     id: string,
     patch: { targets?: PlannerTargets; sortOrder?: number },
   ): Promise<void> {
-    const state = readState();
+    const state = await readState();
     const idx = state.students.findIndex((s) => s.id === id);
     if (idx === -1) return;
     const s = state.students[idx];
@@ -84,13 +89,13 @@ export class LocalPlannerRepository {
       ...(patch.sortOrder !== undefined && { sortOrder: patch.sortOrder }),
       updatedAt: now(),
     };
-    writeState(state);
+    await writeState(state);
   }
 
   static async removeStudent(id: string): Promise<void> {
-    const state = readState();
+    const state = await readState();
     state.students = state.students.filter((s) => s.id !== id);
-    writeState(state);
+    await writeState(state);
   }
 
   /**
@@ -99,13 +104,10 @@ export class LocalPlannerRepository {
   static async replaceStudents(
     students: Array<{ studentId: number; targets: PlannerTargets; sortOrder: number }>,
   ): Promise<void> {
-    const state = readState();
+    const state = await readState();
     const t = now();
     state.students = students.map((s) => ({
-      id:
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: newId(),
       userId: LOCAL_USER_ID,
       studentId: s.studentId,
       targets: s.targets,
@@ -113,26 +115,26 @@ export class LocalPlannerRepository {
       createdAt: t,
       updatedAt: t,
     }));
-    writeState(state);
+    await writeState(state);
   }
 
   static async reorderStudents(orderedIds: string[]): Promise<void> {
-    const state = readState();
+    const state = await readState();
     const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
     state.students = state.students.map((s) => ({
       ...s,
       sortOrder: orderMap.get(s.id) ?? s.sortOrder,
     }));
-    writeState(state);
+    await writeState(state);
   }
 
   static async getInventory(): Promise<InventoryMap> {
-    return readState().inventory;
+    return (await readState()).inventory;
   }
 
   static async updateInventory(items: InventoryMap): Promise<void> {
-    const state = readState();
+    const state = await readState();
     state.inventory = items;
-    writeState(state);
+    await writeState(state);
   }
 }
