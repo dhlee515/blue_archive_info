@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, useSearchParams, Link } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function LoginPage() {
@@ -10,6 +10,7 @@ export default function LoginPage() {
 
   const signIn = useAuthStore((s) => s.signIn);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +19,10 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      navigate('/guide');
+      const raw = searchParams.get('redirect');
+      // 오픈 리다이렉트 방지: 내부 경로(/ 시작, // 또는 /\ 제외)만 허용
+      const safeRedirect = raw && /^\/(?![/\\])/.test(raw) ? raw : '/guide';
+      navigate(safeRedirect, { replace: true });
     } catch {
       setError('이메일 또는 비밀번호가 올바르지 않습니다.');
     } finally {

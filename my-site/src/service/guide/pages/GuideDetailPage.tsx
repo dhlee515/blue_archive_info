@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate, useLocation, Link } from 'react-router';
 import type { Guide, Category } from '@/types/guide';
 import { GuideRepository } from '@/repositories/guideRepository';
 import { CategoryRepository } from '@/repositories/categoryRepository';
@@ -10,7 +10,9 @@ import '@/styles/editor.css';
 export default function GuideDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const canEdit = useAuthStore((s) => s.canEdit);
   const isAdmin = useAuthStore((s) => s.isAdmin);
 
@@ -20,6 +22,7 @@ export default function GuideDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
+    if (isAuthLoading) return;
     async function fetchData() {
       try {
         if (!id) return;
@@ -31,7 +34,12 @@ export default function GuideDetailPage() {
         if (guideData.isInternal) {
           const role = user?.role;
           if (role !== 'admin' && role !== 'editor') {
-            navigate('/guide', { replace: true });
+            if (!user) {
+              const redirect = encodeURIComponent(location.pathname + location.search);
+              navigate(`/login?redirect=${redirect}`, { replace: true });
+            } else {
+              navigate('/guide', { replace: true });
+            }
             return;
           }
         }
@@ -44,7 +52,7 @@ export default function GuideDetailPage() {
       }
     }
     fetchData();
-  }, [id]);
+  }, [id, isAuthLoading, user, location.pathname, location.search, navigate]);
 
   const handleDelete = async () => {
     if (!guide || !user || !confirm('정말 삭제하시겠습니까?')) return;
