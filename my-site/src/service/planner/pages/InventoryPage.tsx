@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { Check, Loader2, Search, X, ScanLine } from 'lucide-react';
+import { Check, Loader2, Search, X, ScanLine, Save } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { fetchSchaleDB } from '@/lib/schaledbCache';
 import { isTauri } from '@/lib/runtime';
@@ -64,22 +64,21 @@ export default function InventoryPage() {
     };
   }, [repo]);
 
-  // 디바운스 저장 (1500ms — egress 절감용. 잦은 입력 변경 시 last-write 만 저장)
-  useEffect(() => {
-    if (inventory === savedRef.current) return;
+  const isDirty = inventory !== savedRef.current;
+
+  const handleSave = async () => {
+    if (!isDirty || status === 'saving') return;
+    const snapshot = inventory;
     setStatus('saving');
-    const timer = setTimeout(async () => {
-      try {
-        await repo.updateInventory(inventory);
-        savedRef.current = inventory;
-        setStatus('saved');
-      } catch (e) {
-        console.error('인벤토리 저장 실패:', e);
-        setStatus('idle');
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [inventory, repo]);
+    try {
+      await repo.updateInventory(snapshot);
+      savedRef.current = snapshot;
+      setStatus('saved');
+    } catch (e) {
+      console.error('인벤토리 저장 실패:', e);
+      setStatus('idle');
+    }
+  };
 
   // "저장됨" 자동 소멸
   useEffect(() => {
@@ -87,6 +86,17 @@ export default function InventoryPage() {
     const timer = setTimeout(() => setStatus('idle'), 2000);
     return () => clearTimeout(timer);
   }, [status]);
+
+  // 저장 안 된 변경이 있는 채로 페이지 떠나기 시도 시 브라우저 경고
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const catalog = useMemo(
     () => buildInventoryCatalog(equipmentData, studentsData, itemsData),
@@ -154,7 +164,22 @@ export default function InventoryPage() {
             현재 보유한 재화를 입력하세요. 플래너의 부족분 계산에 공유됩니다.
           </p>
         </div>
-        <SaveBadge status={status} />
+        <div className="flex items-center gap-2 shrink-0">
+          <SaveStatusLabel status={status} isDirty={isDirty} />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!isDirty || status === 'saving'}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold transition-colors ${
+              isDirty && status !== 'saving'
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-gray-200 text-gray-400 dark:bg-slate-700 dark:text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            {status === 'saving' ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            저장
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -285,7 +310,7 @@ export default function InventoryPage() {
   );
 }
 
-function SaveBadge({ status }: { status: SaveStatus }) {
+function SaveStatusLabel({ status, isDirty }: { status: SaveStatus; isDirty: boolean }) {
   if (status === 'saving') {
     return (
       <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
@@ -299,6 +324,13 @@ function SaveBadge({ status }: { status: SaveStatus }) {
       <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
         <Check size={14} />
         저장됨
+      </span>
+    );
+  }
+  if (isDirty) {
+    return (
+      <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+        저장 안 됨
       </span>
     );
   }

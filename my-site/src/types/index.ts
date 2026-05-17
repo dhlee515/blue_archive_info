@@ -37,6 +37,7 @@ export type {
   WeaponRange,
   WeaponStarRange,
   EquipmentTiers,
+  BondRange,
   PlannerTargets,
   PlannerStudent,
   InventoryMap,

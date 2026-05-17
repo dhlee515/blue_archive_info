@@ -20,9 +20,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuthStore } from '@/stores/authStore';
 import { fetchSchaleDB } from '@/lib/schaledbCache';
 import { studentIconUrl } from '@/lib/schaledbImage';
-import type { SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
+import type { SchaleDBConfig, SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
 import type { InventoryMap, PlannerStudent, PlannerTargets } from '@/types/planner';
-import { aggregateAll, computeDeficit } from '../utils/cultivationCalculator';
+import { aggregateAllWithBond, computeDeficit } from '../utils/cultivationCalculator';
 import { enrichInventoryWithSyntheticTotals } from '../utils/expConversion';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
 import AddStudentModal from '../components/AddStudentModal';
@@ -47,6 +47,7 @@ export default function CultivationPlannerPage() {
   const [itemsData, setItemsData] = useState<ItemsMap>({});
   const [equipmentData, setEquipmentData] = useState<EquipmentMap>({});
   const [inventory, setInventory] = useState<InventoryMap>({});
+  const [commonFavorTags, setCommonFavorTags] = useState<readonly string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,10 +56,11 @@ export default function CultivationPlannerPage() {
     let mounted = true;
     (async () => {
       try {
-        const [sd, items, equipment, ps, inv] = await Promise.all([
+        const [sd, items, equipment, config, ps, inv] = await Promise.all([
           fetchSchaleDB<StudentsMap>('students'),
           fetchSchaleDB<ItemsMap>('items'),
           fetchSchaleDB<EquipmentMap>('equipment'),
+          fetchSchaleDB<SchaleDBConfig>('config'),
           repo.getStudents(),
           repo.getInventory(),
         ]);
@@ -66,6 +68,7 @@ export default function CultivationPlannerPage() {
         setStudentsData(sd);
         setItemsData(items);
         setEquipmentData(equipment);
+        setCommonFavorTags(config.CommonFavorItemTags ?? []);
         setPlannerStudents(ps);
         setInventory(inv);
       } catch (e) {
@@ -125,15 +128,22 @@ export default function CultivationPlannerPage() {
     }
   };
 
-  // 필요 재료 집계
-  const required = useMemo(
-    () => aggregateAll(plannerStudents, studentsData, equipmentData),
-    [plannerStudents, studentsData, equipmentData],
+  // 필요 재료 집계 (인연 권장 포함)
+  const aggregate = useMemo(
+    () => aggregateAllWithBond(
+      plannerStudents,
+      studentsData,
+      equipmentData,
+      itemsData,
+      inventory,
+      commonFavorTags,
+    ),
+    [plannerStudents, studentsData, equipmentData, itemsData, inventory, commonFavorTags],
   );
 
   const deficitReport = useMemo(
-    () => computeDeficit(required, enrichInventoryWithSyntheticTotals(inventory)),
-    [required, inventory],
+    () => computeDeficit(aggregate.required, enrichInventoryWithSyntheticTotals(inventory)),
+    [aggregate.required, inventory],
   );
 
   const existingStudentIds = new Set(plannerStudents.map((p) => p.studentId));
@@ -243,6 +253,10 @@ export default function CultivationPlannerPage() {
             report={deficitReport}
             itemsData={itemsData}
             equipmentData={equipmentData}
+            breakdown={aggregate.breakdown}
+            bondPlans={aggregate.bondPlans}
+            plannerStudents={plannerStudents}
+            studentsData={studentsData}
           />
         </>
       )}

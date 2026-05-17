@@ -8,11 +8,19 @@ interface Props {
   secondary?: { label: string; value: number };
   /** 부족 상태 강조 */
   deficit?: boolean;
+  /** 출처 분해 (애장품 + 인연) — 둘 다 > 0 일 때 hover 툴팁으로 표시 + 시각 마커 */
+  breakdown?: { gear: number; bond: number };
 }
 
-export default function MaterialCell({ info, primary, secondary, deficit }: Props) {
+export default function MaterialCell({ info, primary, secondary, deficit, breakdown }: Props) {
+  const hasBondMix = (breakdown?.bond ?? 0) > 0 && (breakdown?.gear ?? 0) > 0;
+  const tooltip = breakdown
+    ? `${info.name}\n  애장품: ${breakdown.gear.toLocaleString()}\n  인연:   ${breakdown.bond.toLocaleString()}\n  합계:   ${(breakdown.gear + breakdown.bond).toLocaleString()}`
+    : undefined;
+
   return (
     <div
+      title={tooltip}
       className={`flex items-center gap-2 p-2 rounded-lg border ${
         deficit
           ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
@@ -31,8 +39,16 @@ export default function MaterialCell({ info, primary, secondary, deficit }: Prop
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium text-gray-700 dark:text-slate-300 truncate">
-          {info.name}
+        <div className="text-xs font-medium text-gray-700 dark:text-slate-300 truncate flex items-center gap-1">
+          <span className="truncate">{info.name}</span>
+          {hasBondMix && (
+            <span
+              className="shrink-0 text-[9px] font-bold text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/40 rounded px-1 py-0.5"
+              aria-label="애장품 + 인연 공용"
+            >
+              인연
+            </span>
+          )}
         </div>
         <div className={`text-sm font-bold ${deficit ? 'text-red-700 dark:text-red-300' : 'text-gray-900 dark:text-slate-100'}`}>
           {primary.toLocaleString()}

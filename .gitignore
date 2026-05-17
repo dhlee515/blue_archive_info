@@ -12,3 +12,6 @@ my-site/tools/**/*.pyc
 
 # minisign private key (절대 commit 금지)
 *.key
+
+# 외부 자료 (참고용 — 코드와 별개 관리)
+자료/

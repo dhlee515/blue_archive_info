@@ -74,6 +74,14 @@ export interface PotentialsRange {
   crit: PotentialRange;
 }
 
+/** 인연랭크 범위. 1 ~ BondMaxLevel (한섭 100, bond_exp.json 의 maxLevel 와 일치). */
+export interface BondRange {
+  /** 현재 인연랭크 */
+  current: number;
+  /** 목표 인연랭크 */
+  target: number;
+}
+
 /** 학생별 목표치 전체 — planner_students.targets 에 jsonb 직렬화 */
 export interface PlannerTargets {
   level: LevelRange;
@@ -89,7 +97,8 @@ export interface PlannerTargets {
   skills?: SkillsRange;
   /** 잠재력 (WB) 강화 — 체력/공격/치명 각각 0~25 단계 */
   potentials?: PotentialsRange;
-  // 향후 확장: bond
+  /** 인연랭크 — 의상 학생도 각자 독립 */
+  bond?: BondRange;
 }
 
 /** 플래너에 담긴 학생 1건 */

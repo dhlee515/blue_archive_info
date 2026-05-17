@@ -3,9 +3,9 @@ import { useNavigate, useParams, Link } from 'react-router';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { fetchSchaleDB } from '@/lib/schaledbCache';
-import type { SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
+import type { SchaleDBConfig, SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
 import type { InventoryMap, PlannerStudent, PlannerTargets } from '@/types/planner';
-import { aggregatePerStudent, computeDeficit } from '../utils/cultivationCalculator';
+import { aggregateAllWithBond, computeDeficit } from '../utils/cultivationCalculator';
 import { enrichInventoryWithSyntheticTotals } from '../utils/expConversion';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
 import StudentCard from '../components/StudentCard';
@@ -29,6 +29,7 @@ export default function PlannerStudentDetailPage() {
   const [itemsData, setItemsData] = useState<ItemsMap>({});
   const [equipmentData, setEquipmentData] = useState<EquipmentMap>({});
   const [inventory, setInventory] = useState<InventoryMap>({});
+  const [commonFavorTags, setCommonFavorTags] = useState<readonly string[]>([]);
   const [plannerStudent, setPlannerStudent] = useState<PlannerStudent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +41,11 @@ export default function PlannerStudentDetailPage() {
     let mounted = true;
     (async () => {
       try {
-        const [sd, items, equipment, list, inv] = await Promise.all([
+        const [sd, items, equipment, config, list, inv] = await Promise.all([
           fetchSchaleDB<StudentsMap>('students'),
           fetchSchaleDB<ItemsMap>('items'),
           fetchSchaleDB<EquipmentMap>('equipment'),
+          fetchSchaleDB<SchaleDBConfig>('config'),
           repo.getStudents(),
           repo.getInventory(),
         ]);
@@ -51,6 +53,7 @@ export default function PlannerStudentDetailPage() {
         setStudentsData(sd);
         setItemsData(items);
         setEquipmentData(equipment);
+        setCommonFavorTags(config.CommonFavorItemTags ?? []);
         setInventory(inv);
         const found = list.find((p) => p.id === plannerStudentId) ?? null;
         setPlannerStudent(found);
@@ -100,13 +103,24 @@ export default function PlannerStudentDetailPage() {
     }
   };
 
-  // 이 학생 단일의 필요 재료 → 공유 인벤토리와 비교한 부족분.
+  // 이 학생 단일의 필요 재료 (인연 권장 포함) → 공유 인벤토리와 비교한 부족분.
   const student = plannerStudent ? studentsData[String(plannerStudent.studentId)] ?? null : null;
+  const aggregate = useMemo(() => {
+    if (!plannerStudent) return null;
+    return aggregateAllWithBond(
+      [plannerStudent],
+      studentsData,
+      equipmentData,
+      itemsData,
+      inventory,
+      commonFavorTags,
+    );
+  }, [plannerStudent, studentsData, equipmentData, itemsData, inventory, commonFavorTags]);
+
   const deficitReport = useMemo(() => {
-    if (!plannerStudent || !student) return null;
-    const required = aggregatePerStudent(student, plannerStudent.targets, equipmentData);
-    return computeDeficit(required, enrichInventoryWithSyntheticTotals(inventory));
-  }, [plannerStudent, student, equipmentData, inventory]);
+    if (!aggregate) return null;
+    return computeDeficit(aggregate.required, enrichInventoryWithSyntheticTotals(inventory));
+  }, [aggregate, inventory]);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -146,16 +160,64 @@ export default function PlannerStudentDetailPage() {
             onRemove={handleRemove}
           />
 
-          {deficitReport && (
+          {student && <BondInfoPanel student={student} />}
+
+          {deficitReport && aggregate && plannerStudent && (
             <div className="mt-6">
               <DeficitPanel
                 report={deficitReport}
                 itemsData={itemsData}
                 equipmentData={equipmentData}
+                breakdown={aggregate.breakdown}
+                bondPlans={aggregate.bondPlans}
+                plannerStudents={[plannerStudent]}
+                studentsData={studentsData}
               />
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+const FAVOR_STAT_LABEL: Record<string, string> = {
+  MaxHP: '체력',
+  AttackPower: '공격력',
+  DefensePower: '방어력',
+  HealPower: '치유력',
+  AccuracyPoint: '명중',
+  DodgePoint: '회피',
+  CriticalPoint: '치명',
+  CriticalDamageRate: '치명 데미지',
+  StabilityPoint: '안정성',
+  Range: '사거리',
+};
+
+/** 인연 보너스 메타 정보 패널 — 정확한 수치는 v2 로 미루고 학생의 favor 스탯 종류 + 메모리얼 로비만 표시. */
+function BondInfoPanel({ student }: { student: SchaleDBStudent }) {
+  const statTypes = student.FavorStatType ?? [];
+  const lobbyRank = student.MemoryLobby?.[0] ?? 0;
+  if (statTypes.length === 0 && lobbyRank <= 0) return null;
+
+  return (
+    <div className="mt-4 bg-pink-50/40 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800/60 rounded-xl p-3 md:p-4">
+      <h4 className="text-sm font-bold text-pink-800 dark:text-pink-300 mb-2">인연 보너스</h4>
+      {statTypes.length > 0 && (
+        <p className="text-xs text-pink-900 dark:text-pink-200">
+          보너스 스탯:{' '}
+          <span className="font-semibold">
+            {statTypes.map((s) => FAVOR_STAT_LABEL[s] ?? s).join(' / ')}
+          </span>
+          <span className="text-pink-700 dark:text-pink-400 ml-1.5">
+            (특정 인연랭크 구간 도달 시 영구 증가)
+          </span>
+        </p>
+      )}
+      {lobbyRank > 0 && (
+        <p className="text-xs text-pink-900 dark:text-pink-200 mt-1">
+          메모리얼 로비 해금 인연랭크: <span className="font-semibold">{lobbyRank}</span>
+        </p>
       )}
     </div>
   );

@@ -201,7 +201,7 @@ export function buildInventoryCatalog(
       id: 'gear-favor',
       name: '애장품 — 애착 선물',
       keys: favorKeys.sort(byIdAsc),
-      hint: '애장품 강화 시 촉매로 소모되는 선물 아이템.',
+      hint: '애장품 강화 + 인연랭크 까페 선물 양쪽에 공용으로 소모됩니다.',
     });
   }
   if (artifactKeys.length > 0) {

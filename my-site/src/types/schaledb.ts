@@ -56,6 +56,10 @@ export interface SchaleDBStudent {
   FavorStatType: string[];
   FavorStatValue: number[][];
   FavorAlts: number[];
+  /** 학생 선호 선물 태그 — 아이템 Tags 와 교집합으로 매칭 카운트 계산 */
+  FavorItemTags?: string[];
+  /** 학생 고유 선호 태그 — FavorItemTags 와 함께 단순 union 으로 매칭 합산 */
+  FavorItemUniqueTags?: string[];
   MemoryLobby: number[];
   IsLimited: number;
   Weapon: SchaleDBWeapon;
@@ -131,6 +135,12 @@ export interface SchaleDBItem {
   Category?: string;
   /** Material 카테고리의 서브 — "Artifact" | "BookItem" | "CDItem" 등 */
   SubCategory?: string;
+  /** Favor 아이템의 기본 인연 EXP — SR 20, SSR 60 (일부 SSR 20 예외) */
+  ExpValue?: number;
+  /** 아이템 태그 — 학생 FavorItemTags/UniqueTags + config.CommonFavorItemTags 와 매칭 */
+  Tags?: string[];
+  /** Favor 아이템 등급 숫자 — Q3 (SR) / Q4 (SSR) */
+  Quality?: number;
 }
 
 /** SchaleDB 일반 장비 (equipment.min.json) */
@@ -152,11 +162,16 @@ export interface SchaleDBRegion {
   StudentMaxLevel: number;
   WeaponMaxLevel: number;
   EquipmentMaxLevel: number[];
+  /** ⚠️ SchaleDB config 는 Jp/Global/Cn 모두 50. 한섭 region 누락. 우리는 정적 bond_exp.json 의 maxLevel(=100) 을 사용. */
   BondMaxLevel: number;
   PotentialMax: number;
+  /** 까페 일일 선물 한도 (Jp/Global 14, Cn 13) — v2 시뮬레이션용 */
+  FindGiftMax?: number;
 }
 
 /** SchaleDB 공통 설정 (config.min.json) */
 export interface SchaleDBConfig {
   Regions: SchaleDBRegion[];
+  /** 모든 학생 공통 선호 태그 — 학생 태그와 합쳐서 매칭 카운트에 단순 합산 */
+  CommonFavorItemTags?: string[];
 }

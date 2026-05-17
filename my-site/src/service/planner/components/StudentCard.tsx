@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Check, Loader2 } from 'lucide-react';
+import { X, Check, Loader2, Save } from 'lucide-react';
 import type { SchaleDBStudent } from '@/types/schaledb';
-import type { PlannerStudent, PlannerTargets, GearRange, WeaponRange, WeaponStarRange, LevelRange, EquipmentTiers, SkillsRange, PotentialsRange } from '@/types/planner';
+import type { PlannerStudent, PlannerTargets, GearRange, WeaponRange, WeaponStarRange, LevelRange, EquipmentTiers, SkillsRange, PotentialsRange, BondRange } from '@/types/planner';
 import { studentIconUrl } from '@/lib/schaledbImage';
 import { WEAPON_PART_SERIES, getBonusSeriesIdsFor } from '../utils/expConversion';
 import { getWeaponMaxLevelForStar, getWeaponMinLevelForStar } from '../utils/tables/weaponLevel';
@@ -12,6 +12,7 @@ import WeaponStarInput from './WeaponStarInput';
 import EquipmentTargetInput from './EquipmentTargetInput';
 import SkillTargetInput from './SkillTargetInput';
 import PotentialTargetInput from './PotentialTargetInput';
+import BondTargetInput from './BondTargetInput';
 
 const DEFAULT_GEAR: GearRange = { currentTier: 0, targetTier: 0 };
 const DEFAULT_WEAPON: WeaponRange = { currentLevel: 0, targetLevel: 0 };
@@ -27,6 +28,7 @@ const DEFAULT_POTENTIALS: PotentialsRange = {
   attack: { current: 0, target: 0 },
   crit: { current: 0, target: 0 },
 };
+const DEFAULT_BOND: BondRange = { current: 1, target: 1 };
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
@@ -42,25 +44,21 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
   const [targets, setTargets] = useState<PlannerTargets>(plannerStudent.targets);
   const [status, setStatus] = useState<SaveStatus>('idle');
   const savedRef = useRef<PlannerTargets>(plannerStudent.targets);
+  const isDirty = targets !== savedRef.current;
 
-  // 디바운스 저장 (1500ms — egress 절감용. 슬라이더 드래그 같은 잦은 변경 시 last-write 만 저장)
-  useEffect(() => {
-    if (targets === savedRef.current) return;
-
+  const handleSave = async () => {
+    if (!isDirty || status === 'saving') return;
+    const snapshot = targets;
     setStatus('saving');
-    const timer = setTimeout(async () => {
-      try {
-        await onSaveTargets(plannerStudent.id, targets);
-        savedRef.current = targets;
-        setStatus('saved');
-      } catch (e) {
-        console.error('플래너 저장 실패:', e);
-        setStatus('idle');
-      }
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [targets, onSaveTargets, plannerStudent.id]);
+    try {
+      await onSaveTargets(plannerStudent.id, snapshot);
+      savedRef.current = snapshot;
+      setStatus('saved');
+    } catch (e) {
+      console.error('플래너 저장 실패:', e);
+      setStatus('idle');
+    }
+  };
 
   // "저장됨" 표시 자동 소멸
   useEffect(() => {
@@ -68,6 +66,17 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
     const timer = setTimeout(() => setStatus('idle'), 2000);
     return () => clearTimeout(timer);
   }, [status]);
+
+  // 저장 안 된 변경이 있는 채로 페이지 떠나기 시도 시 브라우저 경고
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const handleLevelChange = (level: LevelRange) => {
     setTargets((t) => ({ ...t, level }));
@@ -103,6 +112,9 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
   const handlePotentialsChange = (potentials: PotentialsRange) => {
     setTargets((t) => ({ ...t, potentials }));
   };
+  const handleBondChange = (bond: BondRange) => {
+    setTargets((t) => ({ ...t, bond }));
+  };
 
   const gearEnabled = student?.Gear?.TierUpMaterial && student.Gear.TierUpMaterial.length > 0;
   const equipmentSlots = student?.Equipment ?? [];
@@ -137,7 +149,20 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <SaveBadge status={status} />
+          <SaveStatusLabel status={status} isDirty={isDirty} />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!isDirty || status === 'saving'}
+            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${
+              isDirty && status !== 'saving'
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-gray-200 text-gray-400 dark:bg-slate-700 dark:text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            {status === 'saving' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            저장
+          </button>
           <button
             onClick={onRemove}
             className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
@@ -211,6 +236,16 @@ export default function StudentCard({ plannerStudent, student, onSaveTargets, on
             />
           </Section>
         </div>
+
+        <div className="md:col-span-2">
+          <Section title="인연랭크">
+            <BondTargetInput
+              value={targets.bond ?? DEFAULT_BOND}
+              onChange={handleBondChange}
+              memoryLobbyRank={student?.MemoryLobby?.[0] ?? 0}
+            />
+          </Section>
+        </div>
       </div>
     </div>
   );
@@ -225,7 +260,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function SaveBadge({ status }: { status: SaveStatus }) {
+function SaveStatusLabel({ status, isDirty }: { status: SaveStatus; isDirty: boolean }) {
   if (status === 'saving') {
     return (
       <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
@@ -239,6 +274,13 @@ function SaveBadge({ status }: { status: SaveStatus }) {
       <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
         <Check size={14} />
         저장됨
+      </span>
+    );
+  }
+  if (isDirty) {
+    return (
+      <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+        저장 안 됨
       </span>
     );
   }
