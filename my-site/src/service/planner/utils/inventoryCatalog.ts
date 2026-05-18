@@ -160,35 +160,11 @@ export function buildInventoryCatalog(
     });
   }
 
-  // 7) 애장품 재료 (Favor) — Gear.TierUpMaterial 에서 사용되는 선물 아이템.
-  //    오파츠(Artifact) 는 스킬과 공용이라 별도 섹션으로 itemsData 전체 스캔 (8).
-  const gearMaterialIds = new Set<string>();
-  for (const s of Object.values(studentsData)) {
-    const mats = s.Gear?.TierUpMaterial;
-    if (!mats) continue;
-    for (const row of mats) {
-      for (const id of row) {
-        gearMaterialIds.add(String(id));
-      }
-    }
-  }
-
+  // 7) 선물 (Favor 카테고리 전체) — 애장품 강화 + 인연랭크 까페 양쪽에 공용.
+  //    itemsData 의 모든 Favor 아이템을 포함 (gear 미사용 인연 전용도 모두).
   const favorKeys: string[] = [];
-  const unclassifiedKeys: string[] = [];
-
-  for (const id of gearMaterialIds) {
-    const item = itemsData[id];
-    if (!item) {
-      unclassifiedKeys.push(id);
-      continue;
-    }
-    if (item.Category === 'Favor') {
-      favorKeys.push(id);
-    } else if (item.Category === 'Material' && item.SubCategory === 'Artifact') {
-      // 아래 8) 에서 itemsData 전체 스캔으로 처리 — 여기서는 건너뜀.
-    } else {
-      unclassifiedKeys.push(id);
-    }
+  for (const [id, item] of Object.entries(itemsData)) {
+    if (item.Category === 'Favor') favorKeys.push(id);
   }
 
   // 8) 오파츠 (Material/Artifact) — 애장품 + 스킬 공용. itemsData 전체 스캔.
@@ -196,12 +172,33 @@ export function buildInventoryCatalog(
     .filter((it) => it.Category === 'Material' && it.SubCategory === 'Artifact')
     .map((it) => String(it.Id));
 
+  // 9) 기타 — gear 재료 중 Favor / Artifact 가 아닌 항목 (방어적 분기, 보통 비어있음).
+  const gearMaterialIds = new Set<string>();
+  for (const s of Object.values(studentsData)) {
+    const mats = s.Gear?.TierUpMaterial;
+    if (!mats) continue;
+    for (const row of mats) {
+      for (const id of row) gearMaterialIds.add(String(id));
+    }
+  }
+  const unclassifiedKeys: string[] = [];
+  for (const id of gearMaterialIds) {
+    const item = itemsData[id];
+    if (!item) {
+      unclassifiedKeys.push(id);
+      continue;
+    }
+    if (item.Category === 'Favor') continue;
+    if (item.Category === 'Material' && item.SubCategory === 'Artifact') continue;
+    unclassifiedKeys.push(id);
+  }
+
   if (favorKeys.length > 0) {
     groups.push({
       id: 'gear-favor',
-      name: '애장품 — 애착 선물',
+      name: '선물 (애장품 + 인연)',
       keys: favorKeys.sort(byIdAsc),
-      hint: '애장품 강화 + 인연랭크 까페 선물 양쪽에 공용으로 소모됩니다.',
+      hint: '애장품 강화 + 인연랭크 까페 선물 양쪽에 공용으로 소모됩니다. SchaleDB Favor 카테고리 전체 노출.',
     });
   }
   if (artifactKeys.length > 0) {

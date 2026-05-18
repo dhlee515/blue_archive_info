@@ -14,7 +14,6 @@ export default function GuideDetailPage() {
   const user = useAuthStore((s) => s.user);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const canEdit = useAuthStore((s) => s.canEdit);
-  const isAdmin = useAuthStore((s) => s.isAdmin);
 
   const [guide, setGuide] = useState<Guide | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -131,7 +130,7 @@ export default function GuideDetailPage() {
           />
         </div>
 
-        {canEdit() && (isAdmin() || guide.authorRole !== 'admin') && (
+        {canEdit() && (
           <div className="p-4 md:p-6 border-t border-gray-200 dark:border-slate-700 flex flex-col md:flex-row gap-2 md:gap-3">
             <Link
               to={`/guide/${guide.id}/edit${guide.isInternal ? '?internal=true' : ''}`}

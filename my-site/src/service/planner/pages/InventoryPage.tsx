@@ -300,8 +300,19 @@ export default function InventoryPage() {
           catalog={inventoryInfoMap}
           currentInventory={inventory}
           onClose={() => setOcrOpen(false)}
-          onApply={(next) => {
-            setInventory(next);
+          onApply={async (next) => {
+            // 백업 import 와 동일하게 즉시 저장 — 사용자가 다이얼로그에서 confirm 후 적용한 결과.
+            setStatus('saving');
+            try {
+              await repo.updateInventory(next);
+              savedRef.current = next;
+              setInventory(next);
+              setStatus('saved');
+            } catch (e) {
+              console.error('OCR 인벤토리 저장 실패:', e);
+              setInventory(next);
+              setStatus('idle');
+            }
             setOcrOpen(false);
           }}
         />

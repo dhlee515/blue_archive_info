@@ -98,7 +98,6 @@ export default function InternalNoticePage() {
 
         const renderRow = (guide: Guide, isNotice: boolean) => {
           const categoryName = categories.find((c) => c.id === guide.categoryId)?.name ?? '';
-          const canModify = isAdmin() || guide.authorRole !== 'admin';
           return (
             <div
               key={guide.id}
@@ -145,35 +144,31 @@ export default function InternalNoticePage() {
                       로그
                     </Link>
                   )}
-                  {canModify && (
-                    <>
-                      <Link
-                        to={`/guide/${guide.id}/edit?internal=true`}
-                        className="px-1.5 md:px-2 py-0.5 md:py-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-400 text-xs font-medium rounded transition-colors"
-                      >
-                        수정
-                      </Link>
-                      <button
-                        onClick={async () => {
-                          if (!user || !confirm('정말 삭제하시겠습니까?')) return;
-                          setDeletingId(guide.id);
-                          try {
-                            await GuideRepository.deleteGuide(guide.id, user.id);
-                            setGuides((prev) => prev.filter((g) => g.id !== guide.id));
-                          } catch (error) {
-                            console.error('Failed to delete:', error);
-                            alert('삭제에 실패했습니다.');
-                          } finally {
-                            setDeletingId(null);
-                          }
-                        }}
-                        disabled={deletingId === guide.id}
-                        className="px-1.5 md:px-2 py-0.5 md:py-1 bg-red-50 dark:bg-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-medium rounded transition-colors disabled:opacity-50"
-                      >
-                        {deletingId === guide.id ? '삭제 중' : '삭제'}
-                      </button>
-                    </>
-                  )}
+                  <Link
+                    to={`/guide/${guide.id}/edit?internal=true`}
+                    className="px-1.5 md:px-2 py-0.5 md:py-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-400 text-xs font-medium rounded transition-colors"
+                  >
+                    수정
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      if (!user || !confirm('정말 삭제하시겠습니까?')) return;
+                      setDeletingId(guide.id);
+                      try {
+                        await GuideRepository.deleteGuide(guide.id, user.id);
+                        setGuides((prev) => prev.filter((g) => g.id !== guide.id));
+                      } catch (error) {
+                        console.error('Failed to delete:', error);
+                        alert('삭제에 실패했습니다.');
+                      } finally {
+                        setDeletingId(null);
+                      }
+                    }}
+                    disabled={deletingId === guide.id}
+                    className="px-1.5 md:px-2 py-0.5 md:py-1 bg-red-50 dark:bg-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-medium rounded transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === guide.id ? '삭제 중' : '삭제'}
+                  </button>
                 </div>
               </div>
             </div>
