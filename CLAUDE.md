@@ -47,9 +47,9 @@ All source code lives under `my-site/src/`.
 - `service/planner/utils/` — Pure calculation utilities (`cultivationCalculator.ts` ~500 lines), static cost tables under `utils/tables/`, dual-backend factory (`plannerRepoFactory.ts`), backup/restore, OCR matching helpers
 - `components/` — Shared: `Header/`, `layouts/MainLayout`, `navigation/Sidebar`, `guards/AdminRoute` (3 guards in one file)
 - `repositories/` — Data access layer (Supabase / SchaleDB remote / static JSON / localStorage — see Repositories table)
-- `types/` — Domain types with barrel exports via `index.ts`
-- `utils/` — Utility functions (`AppError` is active; `api.ts`, `format.ts` are stubs)
-- `data/` — Static JSON: `crafting/` (3-stage recipes), `planner/` (exp/skill/potential/weapon cost tables), `events/` (per-event configs, glob-loaded by `eventRepository`), `reroll.{kr,jp}.json`, legacy `character.json`/`weapon.json` (mostly superseded by SchaleDB)
+- `types/` — Domain types (per-module imports, no barrel)
+- `utils/` — Utility functions (`AppError`, `format.ts`)
+- `data/` — Static JSON: `crafting/` (3-stage recipes), `planner/` (exp/skill/potential/weapon cost tables), `events/` (per-event configs, glob-loaded by `eventRepository`), `reroll.{kr,jp}.json`, `weapon_star.json`, `studentAliases.json`
 - `stores/` — Zustand stores (`authStore` is the only one)
 - `lib/` — Infrastructure: `supabase.ts` (client), `schaledb.ts`+`schaledbCache.ts`+`schaledbImage.ts` (remote fetch + TTL cache + stale-while-error), `kvstore.ts` (`WebKVStore` ↔ `TauriKVStore`), `runtime.ts` (`isTauri()`), `sync.ts` (planner local↔cloud), `updater.ts` (Tauri auto-update), `ocrMatching.ts` (Korean-aware fuzzy matching)
 - `styles/` — `global.css` (Tailwind imports), `editor.css` (Tiptap styles)
@@ -140,8 +140,7 @@ All source code lives under `my-site/src/`.
 - `types/planner.ts` — PlannerStudent + PlannerTargets (level/gear/weapon/weaponStar/equipment/skills/potentials/bond), BondRange, InventoryMap, RequiredMaterials, DeficitReport
 - `types/reroll.ts` — RerollCategory, RerollStudent
 - `types/crafting.ts` — CraftingNode, CraftingItem
-- `types/common.ts` — ApiResponse, AsyncState, RoutePath
-- All re-exported through `types/index.ts` barrel
+- Per-module imports (e.g. `from '@/types/planner'`) — no barrel
 - Custom `AppError` class with error codes in `utils/AppError.ts`
 
 ### Environment variables
