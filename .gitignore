@@ -10,6 +10,13 @@ my-site/tools/ocr/venv/
 my-site/tools/**/__pycache__/
 my-site/tools/**/*.pyc
 
+# OCR large binary — 로컬 보존만
+my-site/public/ocr/
+my-site/data/labels/
+my-site/data/adapter/
+my-site/src-tauri/testImage/mobile/
+my-site/src-tauri/testImage/pc/
+
 # minisign private key (절대 commit 금지)
 *.key
 

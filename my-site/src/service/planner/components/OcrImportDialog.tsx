@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { useMemo, useState } from 'react';
 import {
   X,
   Upload,
@@ -11,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { InventoryMap } from '@/types/planner';
 import { matchItemName, topMatches, type MatchResult } from '@/lib/ocrMatching';
+import type { PipelineProgress } from '@/lib/ocr/pipeline';
 import type { MaterialInfo } from '../utils/materialInfo';
 
 interface VisualCandidate {
@@ -27,11 +26,6 @@ interface OcrItem {
   bbox: number[];
   phash?: string | null;
   candidates?: VisualCandidate[] | null;
-}
-
-interface OcrResponse {
-  items: OcrItem[];
-  warnings: string[];
 }
 
 type Step = 'select' | 'processing' | 'preview' | 'error';
@@ -99,10 +93,11 @@ interface Props {
 export default function OcrImportDialog({ catalog, currentInventory, onClose, onApply }: Props) {
   const [step, setStep] = useState<Step>('select');
   const [error, setError] = useState<string | null>(null);
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [mergeMode, setMergeMode] = useState<MergeMode>('add');
+  const [progressMsg, setProgressMsg] = useState<string>('');
 
   // 매칭에 쓸 후보 리스트 (인벤토리 키 + 표시 이름)
   const candidates = useMemo(
@@ -114,32 +109,60 @@ export default function OcrImportDialog({ catalog, currentInventory, onClose, on
     [catalog],
   );
 
-  const handlePickFiles = async () => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
-    try {
-      const selected = await openDialog({
-        multiple: true,
-        filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
-      });
-      if (!selected) return;
-      const paths = Array.isArray(selected) ? selected : [selected];
-      if (paths.length === 0) return;
-      setFiles(paths);
-      await runOcr(paths);
-    } catch (e) {
-      setError(`파일 선택 실패: ${e instanceof Error ? e.message : String(e)}`);
-    }
+    const list = Array.from(e.target.files ?? []);
+    if (list.length === 0) return;
+    setFiles(list);
+    await runOcr(list);
   };
 
-  const runOcr = async (paths: string[]) => {
+  const runOcr = async (selectedFiles: File[]) => {
     setStep('processing');
     setError(null);
     setWarnings([]);
+    setProgressMsg('');
     try {
-      const result = await invoke<OcrResponse>('ocr_import', { imagePaths: paths });
-      setWarnings(result.warnings ?? []);
       const validKeys = new Set(catalog.keys());
-      const newRows: PreviewRow[] = (result.items ?? []).map((it) => {
+      const aggregatedItems: OcrItem[] = [];
+      const warningsAcc: string[] = [];
+
+      // pipeline 모듈(OpenCV.js + Tesseract.js)을 첫 사용 시점에만 lazy load → 메인 번들 격리.
+      const { runOcrPipeline } = await import('@/lib/ocr/pipeline');
+
+      for (let fi = 0; fi < selectedFiles.length; fi++) {
+        const f = selectedFiles[fi];
+        const onProgress = (p: PipelineProgress) => {
+          if (p.stage === 'load') setProgressMsg(`(${fi + 1}/${selectedFiles.length}) 로드 중`);
+          else if (p.stage === 'detect') setProgressMsg(`(${fi + 1}/${selectedFiles.length}) 셀 검출`);
+          else if (p.stage === 'cell')
+            setProgressMsg(
+              `(${fi + 1}/${selectedFiles.length}) 셀 ${(p.cellIdx ?? 0) + 1}/${p.cellTotal ?? 0}`,
+            );
+        };
+        const result = await runOcrPipeline(f, onProgress);
+        if (result.cellCount === 0) {
+          warningsAcc.push(`${f.name}: 셀을 검출하지 못했습니다.`);
+        }
+        for (const c of result.cells) {
+          aggregatedItems.push({
+            name: '',
+            count: c.count,
+            confidence: c.count > 0 ? 1 : 0,
+            bbox: c.bbox,
+            phash: null,
+            candidates: c.candidates.map((cand) => ({
+              key: cand.key,
+              name: cand.name,
+              distance: 0,
+              score: cand.score,
+            })),
+          });
+        }
+      }
+
+      setWarnings(warningsAcc);
+      const newRows: PreviewRow[] = aggregatedItems.map((it) => {
         // 1. OCR 텍스트 매칭
         const textMatch = it.name ? matchItemName(it.name, candidates) : null;
 
@@ -152,12 +175,19 @@ export default function OcrImportDialog({ catalog, currentInventory, onClose, on
           .filter((c): c is VisualCandidate & { invKey: string } => c !== null);
 
         // 3. 결합 매칭
+        // 시각 매칭 자동 임계: cosine 절대값보다 분리도(margin = top1-top2)가 신뢰도의 결정적 지표.
+        // 55 라벨 측정: (0.3+0.03) → 자동매칭률 36% / 정답률 95% (False positive 1/20).
+        //   (0.4+0.05) → 자동매칭률 25% / 정답률 100%. 적극 자동화 우선해서 전자 채택.
+        //   자동 매칭 결과도 score < 0.85 면 "일치도 낮음" warning 표시 — 사용자가 검토.
         let matchedKey: string | null = null;
         let matchSource: MatchSource | null = null;
         let matchScore = 0;
 
         const textKey = textMatch?.candidate.key ?? null;
         const topVisual = visualCands[0] ?? null;
+        const visualMargin =
+          visualCands.length >= 2 ? visualCands[0].score - visualCands[1].score : (visualCands[0]?.score ?? 0);
+        const visualConfident = topVisual !== null && topVisual.score >= 0.3 && visualMargin >= 0.03;
 
         if (textMatch && textKey && topVisual && textKey === topVisual.invKey) {
           // 텍스트 + 시각 일치 — 가장 신뢰
@@ -169,8 +199,8 @@ export default function OcrImportDialog({ catalog, currentInventory, onClose, on
           matchedKey = textKey;
           matchSource = textMatch.method;
           matchScore = textMatch.score;
-        } else if (topVisual && topVisual.score >= 0.7) {
-          // 시각 후보만 (텍스트 매칭 실패)
+        } else if (visualConfident) {
+          // 시각 후보 — cosine ≥ 0.4 + margin ≥ 0.05 모두 통과
           matchedKey = topVisual.invKey;
           matchSource = 'visual';
           matchScore = topVisual.score;
@@ -191,7 +221,7 @@ export default function OcrImportDialog({ catalog, currentInventory, onClose, on
       });
       setRows(newRows);
       setStep(newRows.length === 0 ? 'error' : 'preview');
-      if (newRows.length === 0 && (result.warnings ?? []).length === 0) {
+      if (newRows.length === 0 && warningsAcc.length === 0) {
         setError('이미지에서 인식된 항목이 없습니다.');
       }
     } catch (e) {
@@ -241,16 +271,20 @@ export default function OcrImportDialog({ catalog, currentInventory, onClose, on
               <p className="text-sm text-gray-600 dark:text-slate-400">
                 인벤토리/창고 캡처 이미지를 선택하세요. (PNG/JPG/WEBP)
               </p>
-              <button
-                onClick={handlePickFiles}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
-              >
+              <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium cursor-pointer">
                 <Upload size={18} /> 파일 선택
-              </button>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
               <p className="text-xs text-gray-500 dark:text-slate-500 pt-4">
-                ⚠ 첫 실행 시 PaddleOCR 모델 다운로드(~100MB)로 1-2분 걸릴 수 있습니다.
+                첫 실행 시 OpenCV/Tesseract WASM 로드(~13MB) + 아이콘 인덱스(~12MB)를
                 <br />
-                Python venv 셋업이 필요합니다 — `tools/ocr/README.md` 참고.
+                불러옵니다. 두 번째부터는 즉시 시작됩니다.
               </p>
             </div>
           )}
@@ -261,6 +295,9 @@ export default function OcrImportDialog({ catalog, currentInventory, onClose, on
               <p className="mt-4 text-sm text-gray-600 dark:text-slate-400">
                 OCR 처리 중... ({files.length}장)
               </p>
+              {progressMsg && (
+                <p className="mt-1 text-xs text-gray-500 dark:text-slate-500">{progressMsg}</p>
+              )}
             </div>
           )}
 

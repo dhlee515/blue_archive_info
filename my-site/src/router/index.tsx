@@ -27,6 +27,7 @@ import DeletedNotesPage from '@/service/admin/pages/DeletedNotesPage';
 import CultivationPlannerPage from '@/service/planner/pages/CultivationPlannerPage';
 import PlannerStudentDetailPage from '@/service/planner/pages/PlannerStudentDetailPage';
 import InventoryPage from '@/service/planner/pages/InventoryPage';
+import LabelPage from '@/service/label/pages/LabelPage';
 import AdminRoute, { EditorRoute, AuthRoute } from '@/components/guards/AdminRoute';
 
 const GuideFormPage = lazy(() => import('@/service/guide/pages/GuideFormPage'));
@@ -100,6 +101,10 @@ export const router = createBrowserRouter([
       {
         path: 'planner/inventory',
         element: <InventoryPage />,
+      },
+      {
+        path: 'dev/label',
+        element: <LabelPage />,
       },
       {
         path: 'login',

@@ -1,0 +1,19 @@
+# Linear adapter 학습용 — 기존 OCR venv 위에 추가 설치.
+#
+# 설치:
+#   my-site/tools/ocr/venv/bin/pip install -r my-site/tools/ocr/requirements-adapter.txt
+#
+# Frozen DINOv2-small backbone (384-dim) + Linear(384, 128) metric learning.
+# 학습 후 adapter 만 ONNX export → 브라우저/desktop 매칭에서 384-dim cosine 결과를
+# 128-dim 으로 투사. 인덱스 embed.bin 도 동일 adapter 로 한 번 더 곱.
+
+# torch 2.4+ — DINOv2 transformers 호환. mac arm64 CPU 충분 (1253 × 384 학습 작음).
+torch>=2.4.0
+torchvision>=0.19.0
+
+# DINOv2-small 모델 로드용
+transformers>=4.40.0
+
+# ONNX export
+onnx>=1.16.0
+onnxruntime>=1.18.0
