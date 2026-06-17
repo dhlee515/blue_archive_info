@@ -1,14 +1,29 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import type { RulesData } from '@/types/secretNote';
 import { RuleIcon } from '../RuleIcon';
 import { COLOR_BG, COLOR_FG } from './colors';
+import '@/styles/editor.css';
 
 interface Props {
   data: RulesData;
   title: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** body 가 HTML 이면 sanitize 해서 그대로, 아니면 escape + 줄바꿈 변환.
+ *  기존 노트는 plain text body 라서 이 backward-compat 가 필수. */
+function bodyToSafeHtml(body: string): string {
+  if (body.includes('<')) {
+    return DOMPurify.sanitize(body);
+  }
+  const escaped = body
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped.replace(/\n/g, '<br>');
 }
 
 export default function RulesViewer({ data, title, updatedAt }: Props) {
@@ -104,9 +119,10 @@ export default function RulesViewer({ data, title, updatedAt }: Props) {
                     </div>
                   </button>
                   {hasBody && isOpen && (
-                    <div className="pl-15.5 pr-4 pb-4 text-sm text-gray-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                      {item.body}
-                    </div>
+                    <div
+                      className="tiptap-content pl-15.5 pr-4 pb-4 text-sm text-gray-600 dark:text-slate-300 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: bodyToSafeHtml(item.body ?? '') }}
+                    />
                   )}
                 </div>
               );
