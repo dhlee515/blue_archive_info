@@ -1,6 +1,7 @@
 .tiptap-editor {
   outline: none;
-  min-height: 300px;
+  /* 부모가 --rt-min-height 변수를 설정하면 덮어쓰임 (RichTextEditor expanded 토글). */
+  min-height: var(--rt-min-height, 300px);
   padding: 1rem;
 }
 
@@ -99,7 +100,7 @@
 /* 모바일 */
 @media (max-width: 768px) {
   .tiptap-editor {
-    min-height: 200px;
+    min-height: var(--rt-min-height, 200px);
     padding: 0.75rem;
   }
 

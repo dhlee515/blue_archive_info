@@ -12,15 +12,20 @@ interface Props {
   content: string;
   onChange: (html: string) => void;
   onImageUpload?: (file: File) => Promise<string>;
+  /** 툴바에 입력 영역 확장 토글 버튼 노출. 클릭 시 min-height 300px ↔ 700px 전환. */
+  expandable?: boolean;
 }
 
 type UrlInputType = 'link' | 'image' | 'youtube' | null;
 
-export default function RichTextEditor({ content, onChange, onImageUpload }: Props) {
+const EXPANDED_MIN_HEIGHT = 700;
+
+export default function RichTextEditor({ content, onChange, onImageUpload, expandable = false }: Props) {
   const [urlInput, setUrlInput] = useState<UrlInputType>(null);
   const [urlValue, setUrlValue] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showImageChoice, setShowImageChoice] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ref로 최신 함수 참조 유지 (editorProps 클로저 문제 해결)
@@ -262,6 +267,20 @@ export default function RichTextEditor({ content, onChange, onImageUpload }: Pro
         <button type="button" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} className={`${btn(false)} disabled:opacity-30`}>
           ↪
         </button>
+
+        {expandable && (
+          <>
+            <span className="w-px bg-gray-300 dark:bg-slate-600 mx-1" />
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className={btn(expanded)}
+              title={expanded ? '입력 영역 축소' : '입력 영역 확장'}
+            >
+              {expanded ? '⤡ 축소' : '⤢ 확장'}
+            </button>
+          </>
+        )}
       </div>
 
       {/* 이미지 삽입 방식 선택 바 */}
@@ -312,8 +331,11 @@ export default function RichTextEditor({ content, onChange, onImageUpload }: Pro
         </div>
       )}
 
-      {/* 에디터 영역 */}
-      <div className="relative">
+      {/* 에디터 영역 — expanded 시 CSS 변수로 .tiptap-editor 의 min-height 덮어씀 */}
+      <div
+        className="relative"
+        style={expanded ? ({ '--rt-min-height': `${EXPANDED_MIN_HEIGHT}px` } as React.CSSProperties) : undefined}
+      >
         <EditorContent editor={editor} />
         {isUploading && (
           <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 flex items-center justify-center z-10">
