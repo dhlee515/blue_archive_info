@@ -1,8 +1,24 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import type { RulesData, RuleSection, RuleItem, RuleColor, RuleBanner } from '@/types/secretNote';
 import { RuleIcon } from '../RuleIcon';
 import { ALL_COLORS, COLOR_BG, COLOR_FG } from './colors';
 import { CURATED_LUCIDE_ICONS } from './icons';
+import RichTextEditor from '@/service/guide/components/RichTextEditor';
+import { uploadGuideImage } from '@/service/guide/utils/uploadGuideImage';
+
+/**
+ * 기존 plain text body 와 새 HTML body 모두 RichTextEditor 에 안전하게 주입.
+ * - 이미 HTML (< 포함) — 그대로 사용
+ * - plain text — escape + \n → <br> 변환
+ * RulesViewer 의 bodyToSafeHtml 과 동일한 정책. editor 진입 시 한 번만 정규화 →
+ * 사용자가 저장하면 자연스럽게 HTML 로 영구 마이그레이션 (단, 저장 안 하면 DB 무변경).
+ */
+function bodyForEditor(body: string | undefined): string {
+  if (!body) return '';
+  if (body.includes('<')) return body;
+  const escaped = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escaped.replace(/\n/g, '<br>');
+}
 
 interface Props {
   value: RulesData;
@@ -159,12 +175,9 @@ export default function RulesEditor({ value, onChange }: Props) {
                   value={item.sub ?? ''}
                   onChange={(e) => updateItem(sIdx, iIdx, { sub: e.target.value })}
                 />
-                <textarea
-                  className={`${inputCls} resize-y`}
-                  placeholder="본문 (선택) — 공개 뷰에서 행을 클릭하면 펼쳐집니다"
-                  rows={6}
+                <ItemBodyEditor
                   value={item.body ?? ''}
-                  onChange={(e) => updateItem(sIdx, iIdx, { body: e.target.value })}
+                  onChange={(body) => updateItem(sIdx, iIdx, { body })}
                 />
               </div>
             ))}
@@ -252,6 +265,29 @@ export default function RulesEditor({ value, onChange }: Props) {
 }
 
 /* ─────────────────────────────  SUBCOMPONENTS  ───────────────────────────── */
+
+/** 각 행의 본문 영역 — RichTextEditor (이미지/링크/확장 토글 지원).
+ *
+ *  Tiptap 의 useEditor 는 content 를 mount 시점만 사용 (uncontrolled). 그래서
+ *  `bodyForEditor` 정규화는 useMemo 로 1회만 — 사용자가 편집하면 onChange 로
+ *  부모 state 만 갱신, editor 내부 content 는 자체 관리.
+ *
+ *  주의: parent 가 `key={iIdx}` 로 렌더하므로 행 순서 swap (moveItem) 시 같은
+ *  인스턴스가 다른 item 본문을 받게 됨. RuleItem 에 stable id 도입 전까지는
+ *  현 한계 — 사용자가 swap 후 본문이 동기화 안 보이면 페이지 새로고침 필요. */
+function ItemBodyEditor({ value, onChange }: { value: string; onChange: (body: string) => void }) {
+  const initial = useMemo(() => bodyForEditor(value), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  void value; // initial 만 사용 (Tiptap uncontrolled)
+  return (
+    <RichTextEditor
+      content={initial}
+      onChange={onChange}
+      onImageUpload={uploadGuideImage}
+      expandable
+    />
+  );
+}
 
 function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
