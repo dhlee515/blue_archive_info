@@ -25,12 +25,39 @@ interface Props {
   onChange: (v: RulesData) => void;
 }
 
+function newId(): string {
+  return crypto.randomUUID();
+}
+
 export default function RulesEditor({ value, onChange }: Props) {
   const update = (patch: Partial<RulesData>) => onChange({ ...value, ...patch });
 
+  // 마운트 시 1회 — id 없는 section/item 에 lazy 부여. 기존 노트 호환.
+  // 부여만으로는 DB 변경 X (사용자 저장 시점에 자연 마이그레이션).
+  useEffect(() => {
+    let mutated = false;
+    const sections = value.sections.map((s) => {
+      let sId = s.id;
+      if (!sId) {
+        sId = newId();
+        mutated = true;
+      }
+      const items = s.items.map((it) => {
+        if (!it.id) {
+          mutated = true;
+          return { ...it, id: newId() };
+        }
+        return it;
+      });
+      return sId !== s.id || items !== s.items ? { ...s, id: sId, items } : s;
+    });
+    if (mutated) update({ sections });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 섹션 조작
   const addSection = () => update({
-    sections: [...value.sections, { label: '새 섹션', items: [] }],
+    sections: [...value.sections, { id: newId(), label: '새 섹션', items: [] }],
   });
   const updateSection = (idx: number, patch: Partial<RuleSection>) => {
     const sections = [...value.sections];
@@ -54,7 +81,7 @@ export default function RulesEditor({ value, onChange }: Props) {
     const sections = [...value.sections];
     sections[sIdx] = {
       ...sections[sIdx],
-      items: [...sections[sIdx].items, { icon: '📌', color: 'blue', title: '', sub: '' }],
+      items: [...sections[sIdx].items, { id: newId(), icon: '📌', color: 'blue', title: '', sub: '' }],
     };
     update({ sections });
   };
@@ -136,7 +163,7 @@ export default function RulesEditor({ value, onChange }: Props) {
 
       {/* ── 섹션 리스트 ── */}
       {value.sections.map((section, sIdx) => (
-        <div key={sIdx} className={sectionCardCls}>
+        <div key={section.id ?? `s-${sIdx}`} className={sectionCardCls}>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">섹션 {sIdx + 1}</span>
             <div className="flex-1" />
@@ -154,7 +181,7 @@ export default function RulesEditor({ value, onChange }: Props) {
 
           <div className="flex flex-col gap-2">
             {section.items.map((item, iIdx) => (
-              <div key={iIdx} className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-2 flex flex-col gap-2">
+              <div key={item.id ?? `i-${sIdx}-${iIdx}`} className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-2 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <IconPicker value={item.icon} onChange={(icon) => updateItem(sIdx, iIdx, { icon })} />
                   <ColorPicker value={item.color} onChange={(color) => updateItem(sIdx, iIdx, { color })} />
@@ -272,9 +299,8 @@ export default function RulesEditor({ value, onChange }: Props) {
  *  `bodyForEditor` 정규화는 useMemo 로 1회만 — 사용자가 편집하면 onChange 로
  *  부모 state 만 갱신, editor 내부 content 는 자체 관리.
  *
- *  주의: parent 가 `key={iIdx}` 로 렌더하므로 행 순서 swap (moveItem) 시 같은
- *  인스턴스가 다른 item 본문을 받게 됨. RuleItem 에 stable id 도입 전까지는
- *  현 한계 — 사용자가 swap 후 본문이 동기화 안 보이면 페이지 새로고침 필요. */
+ *  Parent 가 `key={item.id}` 로 렌더하므로 swap/insert 시 stable identity 보장 —
+ *  editor 인스턴스가 올바른 row 의 body 에 머무름. */
 function ItemBodyEditor({ value, onChange }: { value: string; onChange: (body: string) => void }) {
   const initial = useMemo(() => bodyForEditor(value), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps

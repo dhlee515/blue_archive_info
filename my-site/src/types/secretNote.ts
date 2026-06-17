@@ -15,15 +15,21 @@ export type RuleIcon = string;
 
 /** 규칙 행 하나 */
 export interface RuleItem {
+  /** React key + 행 swap 시 stable identity. 신규 생성 = crypto.randomUUID().
+   *  기존 노트는 id 없음 — editor/viewer 마운트 시 lazy 부여 (옵셔널). */
+  id?: string;
   icon: RuleIcon;
   color: RuleColor;
   title: string;
   sub?: string;
-  body?: string;      // 선택. 공개 뷰에서 행 클릭 시 펼쳐지는 plain text 본문
+  /** 본문 (선택). HTML — viewer 가 DOMPurify 로 sanitize. 기존 plain text 도 호환. */
+  body?: string;
 }
 
 /** 규칙 섹션 */
 export interface RuleSection {
+  /** React key + 섹션 swap 시 stable identity. RuleItem.id 와 동일 정책. */
+  id?: string;
   label: string;
   items: RuleItem[];
 }

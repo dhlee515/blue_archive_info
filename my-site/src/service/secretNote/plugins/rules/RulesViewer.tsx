@@ -68,7 +68,7 @@ export default function RulesViewer({ data, title, updatedAt }: Props) {
 
       {/* 섹션들 */}
       {data.sections.map((section, sIdx) => (
-        <div key={sIdx}>
+        <div key={section.id ?? `s-${sIdx}`}>
           <div className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mt-7 mb-3">
             {section.label}
           </div>
@@ -84,7 +84,7 @@ export default function RulesViewer({ data, title, updatedAt }: Props) {
               const hasBody = Boolean(item.body?.trim());
               const isOpen = expanded.has(key);
               return (
-                <div key={iIdx} className="border-b last:border-b-0 border-gray-100 dark:border-slate-700">
+                <div key={item.id ?? `i-${sIdx}-${iIdx}`} className="border-b last:border-b-0 border-gray-100 dark:border-slate-700">
                   <button
                     type="button"
                     onClick={hasBody ? () => toggle(key) : undefined}
