@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import DOMPurify from 'dompurify';
 import type { RulesData } from '@/types/secretNote';
 import { RuleIcon } from '../RuleIcon';
 import { COLOR_BG, COLOR_FG } from './colors';
+import { bodyToSafeHtml } from './bodyFormat';
 import '@/styles/editor.css';
 
 interface Props {
@@ -11,19 +11,6 @@ interface Props {
   title: string;
   createdAt: string;
   updatedAt: string;
-}
-
-/** body 가 HTML 이면 sanitize 해서 그대로, 아니면 escape + 줄바꿈 변환.
- *  기존 노트는 plain text body 라서 이 backward-compat 가 필수. */
-function bodyToSafeHtml(body: string): string {
-  if (body.includes('<')) {
-    return DOMPurify.sanitize(body);
-  }
-  const escaped = body
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  return escaped.replace(/\n/g, '<br>');
 }
 
 export default function RulesViewer({ data, title, updatedAt }: Props) {

@@ -5,20 +5,7 @@ import { ALL_COLORS, COLOR_BG, COLOR_FG } from './colors';
 import { CURATED_LUCIDE_ICONS } from './icons';
 import RichTextEditor from '@/service/guide/components/RichTextEditor';
 import { uploadGuideImage } from '@/service/guide/utils/uploadGuideImage';
-
-/**
- * 기존 plain text body 와 새 HTML body 모두 RichTextEditor 에 안전하게 주입.
- * - 이미 HTML (< 포함) — 그대로 사용
- * - plain text — escape + \n → <br> 변환
- * RulesViewer 의 bodyToSafeHtml 과 동일한 정책. editor 진입 시 한 번만 정규화 →
- * 사용자가 저장하면 자연스럽게 HTML 로 영구 마이그레이션 (단, 저장 안 하면 DB 무변경).
- */
-function bodyForEditor(body: string | undefined): string {
-  if (!body) return '';
-  if (body.includes('<')) return body;
-  const escaped = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return escaped.replace(/\n/g, '<br>');
-}
+import { bodyForEditor } from './bodyFormat';
 
 interface Props {
   value: RulesData;
