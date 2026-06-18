@@ -138,12 +138,9 @@ export default function RulesEditor({ value, onChange }: Props) {
             value={value.heading}
             onChange={(e) => update({ heading: e.target.value })}
           />
-          <textarea
-            className={inputCls}
-            placeholder="부제 (선택)"
-            rows={2}
+          <ItemBodyEditor
             value={value.subtitle ?? ''}
-            onChange={(e) => update({ subtitle: e.target.value })}
+            onChange={(subtitle) => update({ subtitle })}
           />
         </div>
       </div>
@@ -231,12 +228,9 @@ export default function RulesEditor({ value, onChange }: Props) {
               onChange={(e) => updateBanner({ title: e.target.value })}
             />
           </div>
-          <textarea
-            className={inputCls}
-            placeholder="배너 내용"
-            rows={2}
+          <ItemBodyEditor
             value={value.banner.body}
-            onChange={(e) => updateBanner({ body: e.target.value })}
+            onChange={(body) => updateBanner({ body })}
           />
         </div>
       ) : (
@@ -257,12 +251,9 @@ export default function RulesEditor({ value, onChange }: Props) {
             <div className="flex-1" />
             <button type="button" onClick={removeFooter} className="px-2 py-0.5 text-xs bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded">푸터 제거</button>
           </div>
-          <textarea
-            className={inputCls}
-            placeholder="푸터 내용 (예: ⚠️ 경고 횟수와 무관하게 죄질이 심한 경우 즉시 강퇴될 수 있습니다.)"
-            rows={2}
+          <ItemBodyEditor
             value={value.footer}
-            onChange={(e) => update({ footer: e.target.value })}
+            onChange={(footer) => update({ footer })}
           />
         </div>
       ) : (

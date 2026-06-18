@@ -47,9 +47,10 @@ export default function RulesViewer({ data, title, updatedAt }: Props) {
           {data.heading || title}
         </h1>
         {data.subtitle && (
-          <p className="mt-2 text-sm text-gray-500 dark:text-slate-400 leading-relaxed whitespace-pre-line">
-            {data.subtitle}
-          </p>
+          <div
+            className="tiptap-content mt-2 text-sm text-gray-500 dark:text-slate-400 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: bodyToSafeHtml(data.subtitle) }}
+          />
         )}
       </div>
 
@@ -132,9 +133,10 @@ export default function RulesViewer({ data, title, updatedAt }: Props) {
               <div className="text-sm font-bold text-purple-700 dark:text-purple-300">
                 {data.banner.title}
               </div>
-              <div className="text-xs text-gray-600 dark:text-slate-400 mt-1 leading-relaxed whitespace-pre-line">
-                {data.banner.body}
-              </div>
+              <div
+                className="tiptap-content text-xs text-gray-600 dark:text-slate-400 mt-1 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: bodyToSafeHtml(data.banner.body) }}
+              />
             </div>
           </div>
         </>
@@ -143,9 +145,10 @@ export default function RulesViewer({ data, title, updatedAt }: Props) {
       {/* 푸터 */}
       {data.footer && (
         <div className="mt-7 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
-          <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed whitespace-pre-line">
-            {data.footer}
-          </p>
+          <div
+            className="tiptap-content text-xs text-gray-500 dark:text-slate-400 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: bodyToSafeHtml(data.footer) }}
+          />
         </div>
       )}
 
