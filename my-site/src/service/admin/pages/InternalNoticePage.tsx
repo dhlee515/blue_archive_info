@@ -106,7 +106,7 @@ export default function InternalNoticePage() {
                   ? 'bg-red-50 dark:bg-red-900/40 border-red-100 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50'
                   : 'hover:bg-blue-50 dark:hover:bg-blue-900/50 border-gray-100 dark:border-slate-700'
               }`}
-              onClick={() => navigate(`/guide/${guide.id}`)}
+              onClick={() => navigate(`/guide/${guide.id}`, { state: { from: '/admin/notices' } })}
             >
               <div className="flex items-center gap-2">
                 <span className="text-xs px-1.5 py-0.5 bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 rounded font-bold whitespace-nowrap shrink-0">

@@ -20,6 +20,11 @@ export default function GuideDetailPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
+  // "목록으로" 의 돌아갈 경로. navigate state.from 으로 referrer 전달 (예: /admin/notices).
+  // 직접 URL 진입이나 새로고침이면 state 가 없어서 /guide fallback.
+  const fromState = (location.state as { from?: string } | null)?.from;
+  const backTo = fromState ?? '/guide';
+
   useEffect(() => {
     if (isAuthLoading) return;
     async function fetchData() {
@@ -76,7 +81,7 @@ export default function GuideDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-400 dark:text-slate-400 mb-4">정보글을 찾을 수 없습니다.</p>
-        <Link to="/guide" className="text-blue-600 dark:text-blue-400 hover:underline">목록으로 돌아가기</Link>
+        <Link to={backTo} className="text-blue-600 dark:text-blue-400 hover:underline">목록으로 돌아가기</Link>
       </div>
     );
   }
@@ -85,7 +90,7 @@ export default function GuideDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <Link to="/guide" className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
+      <Link to={backTo} className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
         ← 목록으로
       </Link>
 
