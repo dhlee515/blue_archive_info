@@ -122,7 +122,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   const linkIdle = 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100';
 
   const navContent = (
-    <div className="p-4 flex flex-col gap-2 h-full">
+    <div className="p-4 flex flex-col gap-2 h-full overflow-y-auto">
       {/* 상단: 로그인/로그아웃, 마이페이지, 유저 관리 */}
       <div className="flex flex-col gap-1 pb-3 border-b border-gray-200 dark:border-slate-700 mb-1">
         {user ? (
