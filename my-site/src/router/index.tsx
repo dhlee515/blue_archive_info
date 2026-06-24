@@ -8,6 +8,7 @@ import EligmaCalcPage from '@/service/calculator/pages/EligmaCalcPage';
 import CraftingCalcPage from '@/service/calculator/pages/CraftingCalcPage';
 import EventCalcHubPage from '@/service/calculator/pages/EventCalcHubPage';
 import EventCalcDetailPage from '@/service/calculator/pages/EventCalcDetailPage';
+import ReportCalcPage from '@/service/calculator/pages/ReportCalcPage';
 import GuideListPage from '@/service/guide/pages/GuideListPage';
 import GuideDetailPage from '@/service/guide/pages/GuideDetailPage';
 import LoginPage from '@/service/auth/pages/LoginPage';
@@ -89,6 +90,10 @@ export const router = createBrowserRouter([
       {
         path: 'calculator/event/:eventId',
         element: <EventCalcDetailPage />,
+      },
+      {
+        path: 'calculator/report',
+        element: <ReportCalcPage />,
       },
       {
         path: 'planner/cultivation',

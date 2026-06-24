@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
       { name: '엘리그마 계산기', path: '/calculator/eligma' },
       { name: '제조 계산기',    path: '/calculator/crafting' },
       { name: '이벤트 계산기',  path: '/calculator/event' },
+      { name: '보고서 계산기',  path: '/calculator/report' },
     ],
   },
   {
