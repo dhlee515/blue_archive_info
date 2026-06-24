@@ -77,6 +77,11 @@ export default function ReportCalcPage() {
     setCounts((prev) => (prev[key] === '' ? { ...prev, [key]: 0 } : prev));
   };
 
+  // 포커스 시 전체 선택 — 클릭/탭 어떤 경로로든 입력 시 즉시 덮어쓸 수 있게.
+  const selectAllOnFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.select();
+  };
+
   const result = useMemo(() => {
     const current = clamp(asInt(currentLevel, 1), 1, STUDENT_MAX_LEVEL);
     const target = clamp(asInt(targetLevel, 1), 1, STUDENT_MAX_LEVEL);
@@ -137,12 +142,12 @@ export default function ReportCalcPage() {
                 현재 레벨
               </label>
               <input
-                type="number"
-                min={1}
-                max={STUDENT_MAX_LEVEL}
+                type="text"
+                inputMode="numeric"
                 value={currentLevel}
                 onChange={handleIntChange(setCurrentLevel, { min: 1, max: STUDENT_MAX_LEVEL })}
                 onBlur={handleIntBlur(currentLevel, setCurrentLevel, 1)}
+                onFocus={selectAllOnFocus}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
@@ -151,12 +156,12 @@ export default function ReportCalcPage() {
                 목표 레벨
               </label>
               <input
-                type="number"
-                min={1}
-                max={STUDENT_MAX_LEVEL}
+                type="text"
+                inputMode="numeric"
                 value={targetLevel}
                 onChange={handleIntChange(setTargetLevel, { min: 1, max: STUDENT_MAX_LEVEL })}
                 onBlur={handleIntBlur(targetLevel, setTargetLevel, STUDENT_MAX_LEVEL)}
+                onFocus={selectAllOnFocus}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
@@ -165,11 +170,12 @@ export default function ReportCalcPage() {
                 학생 수
               </label>
               <input
-                type="number"
-                min={1}
+                type="text"
+                inputMode="numeric"
                 value={studentCount}
                 onChange={handleIntChange(setStudentCount, { min: 1 })}
                 onBlur={handleIntBlur(studentCount, setStudentCount, 1)}
+                onFocus={selectAllOnFocus}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
@@ -199,11 +205,12 @@ export default function ReportCalcPage() {
                     </div>
                   </div>
                   <input
-                    type="number"
-                    min={0}
+                    type="text"
+                    inputMode="numeric"
                     value={counts[it.key]}
                     onChange={handleCountChange(it.key)}
                     onBlur={handleCountBlur(it.key)}
+                    onFocus={selectAllOnFocus}
                     className="w-24 p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-right"
                   />
                 </div>
