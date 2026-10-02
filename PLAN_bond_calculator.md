@@ -3,6 +3,8 @@
 > 계산기 탭에 학생 인연랭크 계산기를 신규 추가한다 (플래너와 별개 페이지).
 > **학생 1명을 선택하고 그 학생 기준으로만 계산한다.**
 > 작성일: 2026-10-02 · 검증 반영: 2026-10-02 (§8)
+>
+> **상태 (2026-10-02): §5 1~5단계 구현 완료** — `7aaef41` (선물 선택 상자 인벤토리) · `62d8dec` (bondCalc) · `cbca31c` (StudentPickerModal) · `4477422` (페이지) · 문서 커밋. 계획과 달라진 점은 §9.
 > 관련 문서: [PLAN_bond_rank.md](PLAN_bond_rank.md) (플래너 인연 통합 — 공식/EXP 곡선 원 출처), [PLAN_refactoring.md](PLAN_refactoring.md) §9
 > 관련 파일: [bondGifts.ts](my-site/src/service/planner/utils/cultivationCalculator/bondGifts.ts), [bondExp.ts](my-site/src/service/planner/utils/tables/bondExp.ts), [bond_exp.json](my-site/src/data/planner/bond_exp.json), [ReportCalcPage.tsx](my-site/src/service/calculator/pages/ReportCalcPage.tsx) (구조 참고)
 
@@ -222,3 +224,21 @@ SchaleDB 지역 배열은 `[Jp, Global, Cn]`. 한섭은 Global 에 포함되므�
 | V10 | SR 부족분 추천 방식 (사용자 제안) | D2 — 선물 선택 상자 개수 기준. 상자 내용물 = 일반 선물 35종 전부라 최고 효율 SR 개수와 같은 계산 |
 
 확인됨 (변경 없음): §0 수치 전반, 재사용 함수 · 경로 실재, Global 기준 `Craftable` 의 지역 무관성, 커밋 단계 구성.
+
+---
+
+## 9. 구현 메모 (계획 대비 차이)
+
+- **미출시 판정 위치**: 계획은 `bondCalc` 안에 두었으나, 공통 컴포넌트 (`components/student/StudentPickerModal`) 가 calculator 코드에 의존하지 않도록 `lib/schaledb.ts` 의 `isReleasedInGlobal()` 로 이동. 지역 인덱스도 같은 파일의 `SCHALEDB_REGION` 상수.
+- **`IsReleased` 주석 오류 정정**: 타입 주석이 `[JP, Global, KR]` 였으나 SchaleDB `config.Regions` 순서는 `[Jp, Global, Cn]`.
+- **학생 미선택 상태**: 선물 · 부족분은 안내 문구로 대체하되, 입력한 랭크 범위의 필요 EXP 는 학생 없이도 표시.
+- **보유 선물 수량**: 학생을 바꿔도 유지 (같은 인벤토리로 학생 간 비교).
+- **목표 랭크 입력**: `NumberInput` 의 `min = 현재 랭크` + 현재 랭크 변경 핸들러에서 `target = max(target, current)` 로 보정. 비우고 나가면 100.
+- **최대 랭크 초과**: 보유 EXP 가 100 랭크를 넘으면 "최대 랭크, N EXP 초과" 로 표시.
+- **실데이터 검증 (2단계)**: tsx 스크립트 18개 항목 통과 — 시로코 (덤벨 ×3 25개 / 상자 → 페로로 휠 슬라이드 ×3 73개), 유우카(체육복) (제조 SSR 13종 ×2 동점 → "레이스 베개 외 12종"), 하츠네 미쿠 (상자 ×1 = 20), 277명 전원 추천에 한정 선물 없음, 랭크 · 진행 EXP 경계값, 미출시 14명.
+- **선물 목록 구성 변경 (사용자 요청)**: 한 목록 → **고급 선물 (SSR) / 일반 선물 (SR) 두 섹션**. 각 섹션 안에서 배수 → 개당 EXP 순, ×2 · ×1 은 섹션별 접힘. 선물 선택 상자는 내용물이 SR 이라 일반 선물 섹션 끝.
+- **선호도 표정 아이콘**: SchaleDB 가 학생 / 아이템 페이지에서 쓰는 `/images/ui/Cafe_Interaction_Gift_0{1~4}.png` 를 배수와 1:1 로 사용 (`giftReactionIconUrl()` — `lib/schaledbImage.ts`). 01 = 웃음 … 04 = 하트 눈. 선물 행 · 상자 환산 · 부족분 추천에 표시. Tauri CSP `img-src https:` 허용 확인.
+- **SchaleDB 표시 규칙 확인** (`StudentGifts` 청크): 배수 · EXP 공식은 우리와 동일 (`ExpValue × (1 + min(매칭, 3))`, 공통 태그 `['BC','Bc','ew']` 하드코딩). 단 SchaleDB 의 "선호 선물" 목록은 **공통 태그로만 매칭된 선물을 제외** (EXP 계산엔 포함). 이 계산기는 전 선물을 배수대로 보여주므로 꽃다발 등은 전원 하트 눈으로 표시됨.
+- **모바일 하단 요약 바 (사용자 요청)**: 모바일 1단 레이아웃에선 결과 카드가 선물 목록 아래라서, 화면 하단 고정 바에 "도달 가능 랭크 / 부족 EXP (또는 목표 도달 가능)" 표시. 탭하면 결과 카드로 스크롤, 결과 카드가 화면에 보이는 동안은 숨김 (IntersectionObserver). `md:hidden`, z-30 (헤더 · 모달 z-50, 모바일 메뉴 덮개 z-40 아래).
+- **모바일 확인 (headless Edge, CDP)**: 390px / 360px 에서 가로 넘침 없음, 학생 선택 → 입력 → 결과까지 조작해 계산값 일치 (시로코 20(+100) → 40, 덤벨 3 + 상자 5 → 보유 840, 도달 22, 부족 12,005 → 덤벨 67 / 상자 201). 요약 바: 펼친 목록 (페이지 3,665px) 중간에서 표시 → 탭 시 결과로 이동 후 숨김 확인. iOS Safari 는 미확인.
+

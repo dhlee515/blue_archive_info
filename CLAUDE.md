@@ -43,15 +43,16 @@ All source code lives under `my-site/src/`.
 - `service/{feature}/pages/` — Page components per feature domain (home, student, guide, calculator, planner, reroll, secretNote, auth, admin)
 - `service/{feature}/components/` — Feature-specific components
 - `service/calculator/events/` — Event calculator plugin system: `archetypes/{id}/` (Form + pure calc) registered in `archetypes/index.ts`
+- `service/calculator/utils/` — Pure helpers for calculator pages: `reportCalc.ts`, `bondCalc.ts` (bond rank calculator — reuses planner `bondGifts` / `tables/bondExp`)
 - `service/secretNote/plugins/` — Note-type plugin system: `{type}/` (Editor + Viewer + serialize) registered in `plugins/registry.ts`
 - `service/planner/utils/` — Pure calculation utilities (`cultivationCalculator/` — per-domain files behind an `index.ts` barrel), static cost tables under `utils/tables/`, dual-backend factory (`plannerRepoFactory.ts`), shared SchaleDB loader for planner pages (`plannerGameData.ts`), backup/restore, OCR matching helpers
-- `components/` — Shared: `Header/`, `layouts/MainLayout`, `navigation/Sidebar`, `guards/AdminRoute` (3 guards in one file), `form/NumberInput` (all integer inputs — see Styling)
+- `components/` — Shared: `Header/`, `layouts/MainLayout`, `navigation/Sidebar`, `guards/AdminRoute` (3 guards in one file), `form/NumberInput` (all integer inputs — see Styling), `student/StudentPickerModal` (student search grid — planner add + bond calculator)
 - `repositories/` — Data access layer (Supabase / SchaleDB remote / static JSON / localStorage — see Repositories table)
 - `types/` — Domain types (per-module imports, no barrel)
 - `utils/` — Utility functions (`AppError`, `format.ts`, `contentCodec.ts` (Base64 content), `roles.ts` (`isAdminRole` / `canEditRole`))
 - `data/` — Static JSON: `crafting/` (3-stage recipes), `planner/` (exp/skill/potential/weapon cost tables), `events/` (per-event configs, glob-loaded by `eventRepository`), `reroll.{kr,jp}.json`, `weapon_star.json`, `studentAliases.json`
 - `stores/` — Zustand stores (`authStore` is the only one; also exports `useIsAdmin()` / `useCanEdit()` boolean hooks)
-- `lib/` — Infrastructure: `supabase.ts` (client), `supabaseRest.ts` (raw-fetch writes — see Data flow), `schaledb.ts`+`schaledbCache.ts`+`schaledbImage.ts` (remote fetch + TTL cache + stale-while-error), `kvstore.ts` (`WebKVStore` ↔ `TauriKVStore`), `runtime.ts` (`isTauri()`), `sync.ts` (planner local↔cloud), `updater.ts` (Tauri auto-update), `ocrMatching.ts` (Korean-aware fuzzy matching)
+- `lib/` — Infrastructure: `supabase.ts` (client), `supabaseRest.ts` (raw-fetch writes — see Data flow), `schaledb.ts`+`schaledbCache.ts`+`schaledbImage.ts` (remote fetch + TTL cache + stale-while-error; `SCHALEDB_REGION` = region array index `[Jp, Global, Cn]`, KR server = Global, `isReleasedInGlobal()`), `kvstore.ts` (`WebKVStore` ↔ `TauriKVStore`), `runtime.ts` (`isTauri()`), `sync.ts` (planner local↔cloud), `updater.ts` (Tauri auto-update), `ocrMatching.ts` (Korean-aware fuzzy matching)
 - `styles/` — `global.css` (Tailwind imports), `editor.css` (Tiptap styles)
 
 ### Routes
@@ -71,6 +72,7 @@ All source code lives under `my-site/src/`.
 | `/calculator/event` | EventCalcHubPage | — |
 | `/calculator/event/:eventId` | EventCalcDetailPage | — |
 | `/calculator/report` | ReportCalcPage | — |
+| `/calculator/bond` | BondCalcPage | — (bond rank calculator, single student) |
 | `/planner/cultivation` | CultivationPlannerPage | — (works for anon via localStorage) |
 | `/planner/cultivation/:plannerStudentId` | PlannerStudentDetailPage | — |
 | `/planner/inventory` | InventoryPage | — (works for anon via localStorage) |
@@ -173,6 +175,7 @@ VITE_SUPABASE_ANON_KEY=  # Supabase anon/public key
 - Planner state has dual storage; tests/dev should be aware that an anon session's data lives in localStorage (web) or Tauri store file (desktop) and is **not** synced automatically when the user logs in — they must trigger `SyncDialog` (push or pull).
 - Backup/restore via `plannerBackup.ts` + `BackupButtons` produces a JSON file download usable across web ↔ desktop. `BACKUP_VERSION = 1` — adding optional fields to `PlannerTargets` is backward-compatible (no version bump needed).
 - **Bond rank**: `PlannerTargets.bond` (1~100) + `aggregateAllWithBond()` produces gear+bond combined `required` + `breakdown: { gear, bond }` per item + per-student `bondPlans` (recommended gift counts, shortfall EXP). Gift matching follows SchaleDB `common.js` formula `ExpValue × min(matchingCount + 1, 4)` where `matchingCount = |item.Tags ∩ (student.FavorItemTags ∪ FavorItemUniqueTags ∪ config.CommonFavorItemTags)|`. Bond EXP curve (1~100 cumulative) is hard-copied to `data/planner/bond_exp.json` because SchaleDB doesn't host it; source documented in `tables/bondExp.ts`. **Costume students (FavorAlts) each have independent bond ranks** — no shared computation.
+- **Gift data (planner vs bond calculator)**: 52 `Favor` gifts; event-limited ones (5996~5999, bouquets / photo card) have `Craftable` / `Shop` / `StageDrop` all false. The gift selection box (100008, `ConsumeType: 'Choice'`, contents = SR 5000~5034) is detected by `getFavorChoiceBoxes()` and listed in the inventory catalog, but **only the bond calculator counts it** (box = student's best SR). The planner's bond recommendation still ignores the box, doesn't take in-rank progress EXP, and can pick limited bouquets — see `PLAN_bond_calculator.md` §7.
 
 ## UI Language
 
