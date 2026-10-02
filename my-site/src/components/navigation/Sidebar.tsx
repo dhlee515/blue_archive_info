@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
       { name: '제조 계산기',    path: '/calculator/crafting' },
       { name: '이벤트 계산기',  path: '/calculator/event' },
       { name: '보고서 계산기',  path: '/calculator/report' },
+      { name: '인연 계산기',    path: '/calculator/bond' },
     ],
   },
   {
