@@ -110,3 +110,15 @@ export function calculateBondGifts(
 export function getFavorItems(itemsData: Record<string, SchaleDBItem>): SchaleDBItem[] {
   return Object.values(itemsData).filter((it) => it.Category === 'Favor');
 }
+
+/**
+ * 내용물이 전부 Favor 인 택1 상자 (현재 SchaleDB 기준 "선물 선택 상자" 100008 → SR 선물 5000~5034).
+ * 이름 하드코딩 대신 ConsumeType + Items 로 판별 — 같은 성격의 상자가 추가되면 자동 포함.
+ */
+export function getFavorChoiceBoxes(itemsData: Record<string, SchaleDBItem>): SchaleDBItem[] {
+  return Object.values(itemsData).filter((it) => {
+    if (it.ConsumeType !== 'Choice') return false;
+    const contents = (it.Items ?? []).filter((c) => c.Type === 'Item');
+    return contents.length > 0 && contents.every((c) => itemsData[String(c.Id)]?.Category === 'Favor');
+  });
+}

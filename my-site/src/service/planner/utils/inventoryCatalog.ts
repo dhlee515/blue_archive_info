@@ -17,6 +17,7 @@
 
 import type { SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
 import { STUDENT_REPORTS, WEAPON_PART_SERIES, EQUIPMENT_STONES } from './expConversion';
+import { getFavorChoiceBoxes } from './cultivationCalculator/bondGifts';
 
 const CATEGORY_LABEL: Record<string, string> = {
   Hat: '모자',
@@ -162,10 +163,12 @@ export function buildInventoryCatalog(
 
   // 7) 선물 (Favor 카테고리 전체) — 애장품 강화 + 인연랭크 까페 양쪽에 공용.
   //    itemsData 의 모든 Favor 아이템을 포함 (gear 미사용 인연 전용도 모두).
+  //    + 선물 택1 상자 (선물 선택 상자) 는 그룹 끝에 덧붙임.
   const favorKeys: string[] = [];
   for (const [id, item] of Object.entries(itemsData)) {
     if (item.Category === 'Favor') favorKeys.push(id);
   }
+  const favorBoxKeys = getFavorChoiceBoxes(itemsData).map((it) => String(it.Id)).sort(byIdAsc);
 
   // 8) 오파츠 (Material/Artifact) — 애장품 + 스킬 공용. itemsData 전체 스캔.
   const artifactKeys: string[] = Object.values(itemsData)
@@ -197,8 +200,8 @@ export function buildInventoryCatalog(
     groups.push({
       id: 'gear-favor',
       name: '선물 (애장품 + 인연)',
-      keys: favorKeys.sort(byIdAsc),
-      hint: '애장품 강화 + 인연랭크 까페 선물 양쪽에 공용으로 소모됩니다. SchaleDB Favor 카테고리 전체 노출.',
+      keys: [...favorKeys.sort(byIdAsc), ...favorBoxKeys],
+      hint: '애장품 강화 + 인연랭크 까페 선물 양쪽에 공용으로 소모됩니다. SchaleDB Favor 카테고리 전체 + 선물 선택 상자 (SR 선물 중 택1).',
     });
   }
   if (artifactKeys.length > 0) {

@@ -141,6 +141,18 @@ export interface SchaleDBItem {
   Tags?: string[];
   /** Favor 아이템 등급 숫자 — Q3 (SR) / Q4 (SSR) */
   Quality?: number;
+  /** Consumable 상자의 개봉 방식 — "Choice" (내용물 중 택1) | "Random" */
+  ConsumeType?: string;
+  /** Consumable 상자의 내용물 (예: 선물 선택 상자 → SR 선물 5000~5034) */
+  Items?: SchaleDBItemContent[];
+}
+
+/** 상자 내용물 한 줄 */
+export interface SchaleDBItemContent {
+  Type: string;
+  Id: number;
+  AmountMin: number;
+  AmountMax: number;
 }
 
 /** SchaleDB 일반 장비 (equipment.min.json) */
