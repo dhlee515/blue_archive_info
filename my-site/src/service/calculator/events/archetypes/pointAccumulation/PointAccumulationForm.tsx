@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { EventConfig } from '@/types/event';
 import { calcPointAccumulation } from './pointAccumulation';
+import NumberInput from '@/components/form/NumberInput';
 
 interface Props {
   config: EventConfig;
@@ -35,11 +36,10 @@ export default function PointAccumulationForm({ config }: Props) {
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             현재 포인트
           </label>
-          <input
-            type="number"
+          <NumberInput
             min={0}
             value={currentPoints}
-            onChange={(e) => setCurrentPoints(Math.max(0, Number(e.target.value)))}
+            onChange={setCurrentPoints}
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -47,11 +47,10 @@ export default function PointAccumulationForm({ config }: Props) {
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             일일 평균 포인트
           </label>
-          <input
-            type="number"
+          <NumberInput
             min={0}
             value={dailyAverage}
-            onChange={(e) => setDailyAverage(Math.max(0, Number(e.target.value)))}
+            onChange={setDailyAverage}
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -59,11 +58,10 @@ export default function PointAccumulationForm({ config }: Props) {
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             목표 포인트
           </label>
-          <input
-            type="number"
+          <NumberInput
             min={0}
             value={targetPoints}
-            onChange={(e) => setTargetPoints(Math.max(0, Number(e.target.value)))}
+            onChange={setTargetPoints}
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

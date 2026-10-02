@@ -11,6 +11,7 @@ import type { InventoryMap } from '@/types/planner';
 import { matchItemName, topMatches, type MatchResult } from '@/lib/ocrMatching';
 import type { PipelineProgress } from '@/lib/ocr/pipeline';
 import type { MaterialInfo } from '../utils/materialInfo';
+import NumberInput from '@/components/form/NumberInput';
 
 interface VisualCandidate {
   key: string;       // "item:3023" / "equipment:8005" 형식
@@ -460,13 +461,10 @@ function PreviewTable({
                   )}
                 </td>
                 <td className="p-2 text-right">
-                  <input
-                    type="number"
+                  <NumberInput
                     min={0}
                     value={row.count}
-                    onChange={(e) =>
-                      update(i, { count: Math.max(0, Number(e.target.value) || 0) })
-                    }
+                    onChange={(n) => update(i, { count: n })}
                     className="w-24 text-right p-1 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700"
                   />
                 </td>

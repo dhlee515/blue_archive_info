@@ -1,4 +1,5 @@
 import type { MaterialInfo } from '../utils/materialInfo';
+import NumberInput from '@/components/form/NumberInput';
 
 interface Props {
   info: MaterialInfo;
@@ -20,13 +21,12 @@ export default function InventoryItemRow({ info, value, onChange }: Props) {
         <div className="text-xs font-medium text-gray-700 dark:text-slate-300 truncate mb-1">
           {info.name}
         </div>
-        <input
-          type="number"
+        <NumberInput
           min={0}
-          value={value === 0 ? '' : value}
+          value={value}
+          zeroAsEmpty
           placeholder="0"
-          onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-          onFocus={(e) => e.target.select()}
+          onChange={onChange}
           className="w-full p-1 text-sm border border-gray-300 dark:border-slate-600 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
         />
       </div>

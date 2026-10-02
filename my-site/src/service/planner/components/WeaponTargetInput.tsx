@@ -1,5 +1,6 @@
 import type { WeaponRange, WeaponStarRange } from '@/types/planner';
 import { getWeaponMaxLevelForStar, getWeaponMinLevelForStar } from '../utils/tables/weaponLevel';
+import NumberInput from '@/components/form/NumberInput';
 
 interface Props {
   value: WeaponRange;
@@ -47,17 +48,16 @@ export default function WeaponTargetInput({ value, weaponStar, onChange }: Props
             }}
             className="flex-1 min-w-0 accent-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <input
-            type="number"
+          <NumberInput
             min={currentMin}
             max={currentMax}
             disabled={currentLocked}
-            value={value.currentLevel === 0 ? '' : value.currentLevel}
-            onChange={(e) => {
-              const currentLevel = clampCurrent(Number(e.target.value));
+            value={value.currentLevel}
+            zeroAsEmpty
+            onChange={(n) => {
+              const currentLevel = clampCurrent(n);
               onChange({ currentLevel, targetLevel: Math.max(currentLevel, value.targetLevel) });
             }}
-            onFocus={(e) => e.target.select()}
             className="w-16 p-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center disabled:bg-gray-100 disabled:dark:bg-slate-800 disabled:cursor-not-allowed disabled:text-gray-400"
             placeholder={currentLocked ? '—' : String(currentMin)}
           />
@@ -80,17 +80,16 @@ export default function WeaponTargetInput({ value, weaponStar, onChange }: Props
             }}
             className="flex-1 min-w-0 accent-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <input
-            type="number"
+          <NumberInput
             min={targetMin}
             max={targetMax}
             disabled={targetLocked}
-            value={value.targetLevel === 0 ? '' : value.targetLevel}
-            onChange={(e) => {
-              const targetLevel = clampTarget(Number(e.target.value));
+            value={value.targetLevel}
+            zeroAsEmpty
+            onChange={(n) => {
+              const targetLevel = clampTarget(n);
               onChange({ currentLevel: Math.min(value.currentLevel, targetLevel), targetLevel });
             }}
-            onFocus={(e) => e.target.select()}
             className="w-16 p-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center disabled:bg-gray-100 disabled:dark:bg-slate-800 disabled:cursor-not-allowed disabled:text-gray-400"
             placeholder={targetLocked ? '—' : String(targetMin)}
           />

@@ -1,5 +1,6 @@
 import type { BondRange } from '@/types/planner';
 import { BOND_MAX_LEVEL } from '../utils/tables/bondExp';
+import NumberInput from '@/components/form/NumberInput';
 
 interface Props {
   value: BondRange;
@@ -37,16 +38,14 @@ export default function BondTargetInput({ value, onChange, memoryLobbyRank }: Pr
               }}
               className="flex-1 min-w-0 accent-pink-500 cursor-pointer"
             />
-            <input
-              type="number"
+            <NumberInput
               min={1}
               max={BOND_MAX_LEVEL}
               value={value.current}
-              onChange={(e) => {
-                const current = clamp(Number(e.target.value));
+              onChange={(n) => {
+                const current = clamp(n);
                 onChange({ current, target: Math.max(current, value.target) });
               }}
-              onFocus={(e) => e.target.select()}
               className="w-16 p-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center"
             />
           </div>
@@ -67,16 +66,14 @@ export default function BondTargetInput({ value, onChange, memoryLobbyRank }: Pr
               }}
               className="flex-1 min-w-0 accent-pink-500 cursor-pointer"
             />
-            <input
-              type="number"
+            <NumberInput
               min={1}
               max={BOND_MAX_LEVEL}
               value={value.target}
-              onChange={(e) => {
-                const target = clamp(Number(e.target.value));
+              onChange={(n) => {
+                const target = clamp(n);
                 onChange({ current: Math.min(value.current, target), target });
               }}
-              onFocus={(e) => e.target.select()}
               className="w-16 p-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center"
             />
           </div>

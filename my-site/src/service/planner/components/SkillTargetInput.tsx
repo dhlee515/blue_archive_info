@@ -1,5 +1,6 @@
 import type { SkillRange, SkillsRange } from '@/types/planner';
 import { EX_SKILL_MAX, NORMAL_SKILL_MAX } from '../utils/tables/skillCost';
+import NumberInput from '@/components/form/NumberInput';
 
 interface Props {
   value: SkillsRange;
@@ -88,13 +89,11 @@ function SkillTrack({ label, max, value, onChange }: TrackProps) {
             onChange={(e) => onCurrentChange(Number(e.target.value))}
             className="flex-1 min-w-0 accent-blue-400 cursor-pointer"
           />
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={max}
             value={value.current}
-            onChange={(e) => onCurrentChange(Number(e.target.value))}
-            onFocus={(e) => e.target.select()}
+            onChange={onCurrentChange}
             className="w-12 p-1 text-sm border border-gray-300 dark:border-slate-600 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center"
           />
         </div>
@@ -108,13 +107,11 @@ function SkillTrack({ label, max, value, onChange }: TrackProps) {
             onChange={(e) => onTargetChange(Number(e.target.value))}
             className="flex-1 min-w-0 accent-blue-600 cursor-pointer"
           />
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={max}
             value={value.target}
-            onChange={(e) => onTargetChange(Number(e.target.value))}
-            onFocus={(e) => e.target.select()}
+            onChange={onTargetChange}
             className="w-12 p-1 text-sm border border-gray-300 dark:border-slate-600 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center"
           />
         </div>

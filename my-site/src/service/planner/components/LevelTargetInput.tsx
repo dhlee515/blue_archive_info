@@ -1,5 +1,6 @@
 import type { LevelRange } from '@/types/planner';
 import { STUDENT_MAX_LEVEL } from '../utils/tables/studentExp';
+import NumberInput from '@/components/form/NumberInput';
 
 interface Props {
   value: LevelRange;
@@ -27,16 +28,14 @@ export default function LevelTargetInput({ value, onChange }: Props) {
             }}
             className="flex-1 min-w-0 accent-blue-500 cursor-pointer"
           />
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={STUDENT_MAX_LEVEL}
             value={value.current}
-            onChange={(e) => {
-              const current = clamp(Number(e.target.value));
+            onChange={(n) => {
+              const current = clamp(n);
               onChange({ current, target: Math.max(current, value.target) });
             }}
-            onFocus={(e) => e.target.select()}
             className="w-16 p-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center"
           />
         </div>
@@ -57,16 +56,14 @@ export default function LevelTargetInput({ value, onChange }: Props) {
             }}
             className="flex-1 min-w-0 accent-blue-500 cursor-pointer"
           />
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={STUDENT_MAX_LEVEL}
             value={value.target}
-            onChange={(e) => {
-              const target = clamp(Number(e.target.value));
+            onChange={(n) => {
+              const target = clamp(n);
               onChange({ current: Math.min(value.current, target), target });
             }}
-            onFocus={(e) => e.target.select()}
             className="w-16 p-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-center"
           />
         </div>

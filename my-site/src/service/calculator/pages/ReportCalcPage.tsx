@@ -8,29 +8,17 @@ import { calculateLevelCost } from '@/service/planner/utils/cultivationCalculato
 import { STUDENT_MAX_LEVEL } from '@/service/planner/utils/tables/studentExp';
 import { maxLevelFromExp } from '../utils/reportCalc';
 import { itemIconUrl } from '@/lib/schaledbImage';
-
-type NumOrEmpty = number | '';
-
-function clamp(n: number, min: number, max: number): number {
-  if (Number.isNaN(n)) return min;
-  return Math.max(min, Math.min(max, n));
-}
+import NumberInput from '@/components/form/NumberInput';
 
 function formatNumber(n: number): string {
   return n.toLocaleString('ko-KR');
 }
 
-function asInt(value: NumOrEmpty, fallback: number): number {
-  return typeof value === 'number' ? value : fallback;
-}
-
 export default function ReportCalcPage() {
-  // 빈 문자열은 사용자가 백스페이스로 input 을 비운 일시 상태.
-  // onBlur 시 fallback 으로 normalize 한다.
-  const [currentLevel, setCurrentLevel] = useState<NumOrEmpty>(1);
-  const [targetLevel, setTargetLevel] = useState<NumOrEmpty>(STUDENT_MAX_LEVEL);
-  const [studentCount, setStudentCount] = useState<NumOrEmpty>(1);
-  const [counts, setCounts] = useState<Record<string, NumOrEmpty>>(() =>
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [targetLevel, setTargetLevel] = useState(STUDENT_MAX_LEVEL);
+  const [studentCount, setStudentCount] = useState(1);
+  const [counts, setCounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(STUDENT_REPORTS.map((it) => [it.key, 0])),
   );
 
@@ -40,58 +28,14 @@ export default function ReportCalcPage() {
     [],
   );
 
-  const handleIntChange = (
-    setter: (v: NumOrEmpty) => void,
-    opts: { min: number; max?: number },
-  ) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    if (raw === '') {
-      setter('');
-      return;
-    }
-    const parsed = Math.floor(Number(raw));
-    if (Number.isNaN(parsed)) return;
-    setter(clamp(parsed, opts.min, opts.max ?? Number.MAX_SAFE_INTEGER));
-  };
-
-  const handleIntBlur = (
-    value: NumOrEmpty,
-    setter: (v: NumOrEmpty) => void,
-    fallback: number,
-  ) => () => {
-    if (value === '') setter(fallback);
-  };
-
-  const handleCountChange = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    if (raw === '') {
-      setCounts((prev) => ({ ...prev, [key]: '' }));
-      return;
-    }
-    const parsed = Math.floor(Number(raw));
-    if (Number.isNaN(parsed)) return;
-    setCounts((prev) => ({ ...prev, [key]: Math.max(0, parsed) }));
-  };
-
-  const handleCountBlur = (key: string) => () => {
-    setCounts((prev) => (prev[key] === '' ? { ...prev, [key]: 0 } : prev));
-  };
-
-  // 포커스 시 전체 선택 — 클릭/탭 어떤 경로로든 입력 시 즉시 덮어쓸 수 있게.
-  const selectAllOnFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.select();
-  };
-
   const result = useMemo(() => {
-    const current = clamp(asInt(currentLevel, 1), 1, STUDENT_MAX_LEVEL);
-    const target = clamp(asInt(targetLevel, 1), 1, STUDENT_MAX_LEVEL);
-    const n = Math.max(1, asInt(studentCount, 1));
+    const current = currentLevel;
+    const target = targetLevel;
+    const n = studentCount;
     const { exp: perStudentExp, credits: perStudentCredits } = calculateLevelCost(current, target);
     const neededExp = perStudentExp * n;
     const neededCredits = perStudentCredits * n;
-    const numericCounts: Record<string, number> = {};
-    for (const k of Object.keys(counts)) numericCounts[k] = asInt(counts[k], 0);
-    const heldExp = aggregateStudentExp(numericCounts);
+    const heldExp = aggregateStudentExp(counts);
     const deficitExp = Math.max(0, neededExp - heldExp);
     const breakdown = breakdownStudentExp(deficitExp);
     // 보유 EXP 를 N명에게 균등 분배했을 때 각자 도달 가능한 레벨
@@ -141,13 +85,11 @@ export default function ReportCalcPage() {
               <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
                 현재 레벨
               </label>
-              <input
-                type="text"
-                inputMode="numeric"
+              <NumberInput
+                min={1}
+                max={STUDENT_MAX_LEVEL}
                 value={currentLevel}
-                onChange={handleIntChange(setCurrentLevel, { min: 1, max: STUDENT_MAX_LEVEL })}
-                onBlur={handleIntBlur(currentLevel, setCurrentLevel, 1)}
-                onFocus={selectAllOnFocus}
+                onChange={setCurrentLevel}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
@@ -155,13 +97,12 @@ export default function ReportCalcPage() {
               <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
                 목표 레벨
               </label>
-              <input
-                type="text"
-                inputMode="numeric"
+              <NumberInput
+                min={1}
+                max={STUDENT_MAX_LEVEL}
+                emptyValue={STUDENT_MAX_LEVEL}
                 value={targetLevel}
-                onChange={handleIntChange(setTargetLevel, { min: 1, max: STUDENT_MAX_LEVEL })}
-                onBlur={handleIntBlur(targetLevel, setTargetLevel, STUDENT_MAX_LEVEL)}
-                onFocus={selectAllOnFocus}
+                onChange={setTargetLevel}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
@@ -169,13 +110,10 @@ export default function ReportCalcPage() {
               <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
                 학생 수
               </label>
-              <input
-                type="text"
-                inputMode="numeric"
+              <NumberInput
+                min={1}
                 value={studentCount}
-                onChange={handleIntChange(setStudentCount, { min: 1 })}
-                onBlur={handleIntBlur(studentCount, setStudentCount, 1)}
-                onFocus={selectAllOnFocus}
+                onChange={setStudentCount}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
@@ -204,13 +142,9 @@ export default function ReportCalcPage() {
                       {it.rarity} · +{formatNumber(it.exp)} EXP
                     </div>
                   </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
+                  <NumberInput
                     value={counts[it.key]}
-                    onChange={handleCountChange(it.key)}
-                    onBlur={handleCountBlur(it.key)}
-                    onFocus={selectAllOnFocus}
+                    onChange={(n) => setCounts((prev) => ({ ...prev, [it.key]: n }))}
                     className="w-24 p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100 text-right"
                   />
                 </div>

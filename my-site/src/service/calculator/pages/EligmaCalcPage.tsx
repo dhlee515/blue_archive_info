@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import weaponStarData from '@/data/weapon_star.json';
+import NumberInput from '@/components/form/NumberInput';
 
 // 성급 상수 및 누적 엘레프 수치 (src/data/weapon_star.json)
 const STAR_LEVELS = weaponStarData.stars;
@@ -42,11 +43,11 @@ function getEligmaCostByTier(
 export default function EligmaCalcPage() {
   const [currentStar, setCurrentStar] = useState<number>(3);
   const [targetStar, setTargetStar] = useState<number>(5);
-  const [ownedEleph, setOwnedEleph] = useState<number | ''>(0);
+  const [ownedEleph, setOwnedEleph] = useState<number>(0);
 
   // 상점 엘리그마 가격 티어 상태
   const [pricePerEleph, setPricePerEleph] = useState<number>(1);
-  const [remainingInTier, setRemainingInTier] = useState<number | ''>(20);
+  const [remainingInTier, setRemainingInTier] = useState<number>(20);
 
   const [result, setResult] = useState<{
     neededEleph: number;
@@ -65,10 +66,10 @@ export default function EligmaCalcPage() {
     const targetElephTotal = STAR_LEVELS.find((s) => s.level === targetStar)?.cumulativeEleph || 0;
 
     const rawNeededEleph = targetElephTotal - currentElephTotal;
-    const elephToBuy = Math.max(0, rawNeededEleph - (Number(ownedEleph) || 0));
+    const elephToBuy = Math.max(0, rawNeededEleph - ownedEleph);
 
     // 3. 엘리그마 소모량 계산
-    const eligmaCost = getEligmaCostByTier(elephToBuy, pricePerEleph, Number(remainingInTier) || 0);
+    const eligmaCost = getEligmaCostByTier(elephToBuy, pricePerEleph, remainingInTier);
 
     setResult({
       neededEleph: elephToBuy,
@@ -118,14 +119,10 @@ export default function EligmaCalcPage() {
 
           <div>
             <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">현재 보유 엘레프(조각)</label>
-            <input
-              type="number"
-              min="0"
+            <NumberInput
+              min={0}
               value={ownedEleph}
-              onChange={(e) => {
-                const val = e.target.value;
-                setOwnedEleph(val === '' ? '' : Number(val));
-              }}
+              onChange={setOwnedEleph}
               className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
               placeholder="0"
             />
@@ -142,7 +139,7 @@ export default function EligmaCalcPage() {
               onChange={(e) => {
                 const val = Number(e.target.value);
                 setPricePerEleph(val);
-                if (val !== 5 && Number(remainingInTier) > 20) {
+                if (val !== 5 && remainingInTier > 20) {
                   setRemainingInTier(20);
                 }
               }}
@@ -158,22 +155,11 @@ export default function EligmaCalcPage() {
           {pricePerEleph < 5 && (
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">해당 가격 잔여 구매 횟수</label>
-              <input
-                type="number"
-                min="0"
-                max="20"
+              <NumberInput
+                min={0}
+                max={20}
                 value={remainingInTier}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === '') {
-                    setRemainingInTier('');
-                  } else {
-                    let num = Number(val);
-                    if (num > 20) num = 20;
-                    if (num < 0) num = 0;
-                    setRemainingInTier(num);
-                  }
-                }}
+                onChange={setRemainingInTier}
                 className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-700 dark:text-slate-100"
                 placeholder="0~20"
               />
