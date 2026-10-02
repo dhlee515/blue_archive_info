@@ -28,3 +28,9 @@ export const SCHALEDB_CACHE = {
 } as const;
 
 export type SchaleDBEndpointKey = keyof typeof SCHALEDB_ENDPOINTS;
+
+/**
+ * SchaleDB 지역별 배열 (`IsReleased`, `Craftable`, `MemoryLobby` …) 의 인덱스.
+ * config.min.json 의 `Regions` 순서 (Jp, Global, Cn) 와 동일. 한섭은 Global 에 포함.
+ */
+export const SCHALEDB_REGION = { Jp: 0, Global: 1, Cn: 2 } as const;

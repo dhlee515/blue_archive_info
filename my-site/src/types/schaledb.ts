@@ -3,7 +3,7 @@
 /** SchaleDB 학생 원본 데이터 (kr/students.min.json) */
 export interface SchaleDBStudent {
   Id: number;
-  IsReleased: [boolean, boolean, boolean]; // [JP, Global, KR]
+  IsReleased: [boolean, boolean, boolean]; // [Jp, Global, Cn] — SCHALEDB_REGION
   DefaultOrder: number;
   PathName: string;
   DevName: string;
@@ -141,6 +141,10 @@ export interface SchaleDBItem {
   Tags?: string[];
   /** Favor 아이템 등급 숫자 — Q3 (SR) / Q4 (SSR) */
   Quality?: number;
+  /** 획득 경로 (지역별 [Jp, Global, Cn]) — 셋 다 false 면 이벤트 한정 등 일반 획득 불가 */
+  Craftable?: boolean[];
+  Shop?: boolean[];
+  StageDrop?: boolean[];
   /** Consumable 상자의 개봉 방식 — "Choice" (내용물 중 택1) | "Random" */
   ConsumeType?: string;
   /** Consumable 상자의 내용물 (예: 선물 선택 상자 → SR 선물 5000~5034) */
