@@ -4,6 +4,10 @@
 >
 > 프로젝트 전체 구조 분석 (Explore agent 2개 + 직접 검증) 결과에서 식별된
 > 개선 거리. 우선순위 4단계로 정리.
+>
+> **상태 (2026-10-02 재검토): Tier 1~4 모두 적용 완료.**
+> Tier 1 `82edbf9` · Tier 2 `82edbf9` (CLAUDE.md 일부) · Tier 3 `e375d9c` · Tier 4 `130b8d3`.
+> 적용 후 재검토에서 발견된 오류 / 누락은 [§8 사후 정정](#8-사후-정정-2026-10-02) 참고.
 
 ## 1. 분석 범위
 
@@ -26,7 +30,7 @@
 - `src/repositories/categoryRepository.ts` ↔ `internalCategoryRepository.ts` — 같은 패턴.
 
 ### 큰 파일
-- `src/service/planner/utils/cultivationCalculator.ts` (697 line) — 6개 도메인 자연스러운 분리 가능.
+- `src/service/planner/utils/cultivationCalculator.ts` (697 line) — 5개 도메인 + 공통 helper + 합산으로 자연스러운 분리 가능.
 - 나머지 (OcrImportDialog 611, CraftingCalcPage 501, LabelPage 504 등) — 이미 sub-component / 순수함수 분리되어 있고 응집도 높음. **분리 불필요**.
 
 ### Stub 표기 오류 (CLAUDE.md)
@@ -113,7 +117,7 @@ grep -E "character\.json|weapon\.json" src-tauri/tauri.conf.json  # 빈 결과
 - `PlannerStudentDetailPage.tsx` — `{ aggregateAllWithBond, computeDeficit }`
 - **외부 사용 = 4개 export 만**. 나머지 16개는 내부 helper.
 
-**분리안** (내부 helper 영역 분석 후 보강 — 7 files):
+**분리안** (내부 helper 영역 분석 후 보강 — index 포함 8 files):
 ```
 src/service/planner/utils/cultivationCalculator/
 ├── index.ts          # barrel — 외부 4개 항목 re-export
@@ -166,7 +170,7 @@ aggregate (모든 domain import + 합산)
 ### 🟡 Tier 4 — CategoryManagePage DRY (위험 낮음, ~1-2시간)
 
 **현 상태 검증 결과 (diff 확인됨)**:
-- `CategoryManagePage.tsx` ↔ `InternalCategoryManagePage.tsx` — **단 7 line 차이**
+- `CategoryManagePage.tsx` ↔ `InternalCategoryManagePage.tsx` — **단 8 line 차이**
   - import 1줄 (Repository)
   - default function 이름 1줄
   - Repository 메소드 호출 5줄 (getCategories, reorder, createCategory, deleteCategory, updateName)
@@ -202,7 +206,7 @@ interface CategoryRepoLike {
 ```
 
 **위험 — 낮음**:
-- 두 페이지 diff 가 명확하게 7 line — UX 차이 없음 확인.
+- 두 페이지 diff 가 명확하게 8 line — UX 차이 없음 확인.
 - Repository 시그니처 100% 일치 확인.
 - 기존 라우트 경로 (`/admin/categories`, `/admin/internal-categories`) 유지 — wrapper 가 default export 그대로.
 
@@ -219,7 +223,7 @@ interface CategoryRepoLike {
 
 ## 4. 진행 순서 제안
 
-1. Tier 1 (5분) — 6 파일 + 빈 JSON 삭제 → type check + lint 확인
+1. Tier 1 (5분) — 코드 6 파일 + legacy JSON 2 삭제 → type check + lint 확인
 2. Tier 2 (3분) — CLAUDE.md 수정
 3. Tier 3 (1-2시간) — cultivationCalculator 분리 → planner UI 검증
 4. Tier 4 (1-2시간) — CategoryManager DRY → admin UI 검증
@@ -319,7 +323,7 @@ levelCost / gearWeapon / skills / potentials / bondGifts  (5 domain, 서로 호�
 
 ### Tier 4 — CategoryManager DRY 검증
 
-**`diff CategoryManagePage.tsx InternalCategoryManagePage.tsx` 결과 — 7 line**:
+**`diff CategoryManagePage.tsx InternalCategoryManagePage.tsx` 결과 — 8 line**:
 - import line (`CategoryRepository` ↔ `InternalCategoryRepository`)
 - export function 이름
 - Repository 메소드 호출 5건: `getCategories`, `reorder`, `createCategory`, `deleteCategory`, `updateName`
@@ -362,7 +366,7 @@ levelCost / gearWeapon / skills / potentials / bondGifts  (5 domain, 서로 호�
 | 1 | 8 파일 외부 import grep, Tauri bundle, Vite glob, public/ 복사본, dynamic import | 모두 0 — 안전 |
 | 1 (AppError) | 4 repository 10+ 호출 확인 | `AppError.ts` 보존 (barrel 만 삭제) |
 | 3 | 외부 import 4개 매핑, 내부 의존 그래프 (`addTo`/`mergeInto` cross-cutting), domain 간 직접 호출 0 | barrel + `_shared.ts` 패턴으로 안전 |
-| 4 | diff 7 line, repository 시그니처 100% 일치, router default export 호환 | wrapper 패턴 안전 |
+| 4 | diff 8 line, repository 시그니처 100% 일치, router default export 호환 | wrapper 패턴 안전 |
 
 실패 위험은 모두 **type-check + build** 단계에서 잡힘 (런타임 오류 가능성 매우 낮음). 각 Tier 별 commit 분리로 rollback 단순화.
 
@@ -375,3 +379,63 @@ levelCost / gearWeapon / skills / potentials / bondGifts  (5 domain, 서로 호�
 - **Header / Sidebar**: admin route 직접 link 없음 — router 가 단일 진입점
 - **public/ 폴더**: `public/ocr/` 만 (인덱스 binary), legacy JSON 복사본 없음
 - **Tauri bundle resources**: `extract_inventory.py`, `remap.json`, `icon_hashes.json` 만 명시
+
+## 8. 사후 정정 (2026-10-02)
+
+적용 완료 후 git 이력 + 현재 코드 대조로 재검토. 실제 작업 결과(type-check 통과, 외부 import 무변경)는 문제 없었고, 아래는 **문서상의 오류 / 누락** 정정.
+
+### 8.1 사실과 다른 검증 근거
+
+| 원문 주장 | 실제 | 영향 |
+|---|---|---|
+| §7 "Header / Sidebar: admin route 직접 link 없음 — router 가 단일 진입점" | `Sidebar.tsx` 가 `/admin/users`, `/admin/notes`, `/admin/notices` 링크. 카테고리 페이지는 `GuideListPage.tsx` (`/admin/categories`), `InternalNoticePage.tsx` (`/admin/internal-categories`) 에서 링크 | 없음 — Tier 4 가 경로를 유지했기 때문. 근거만 틀림 |
+| §3·§7 "`public/` 폴더: `ocr/` subdir 만 (인덱스 binary)" | `my-site/public/` 없음. `public/ocr/` 는 `.gitignore` 대상 → 저장소·배포본에 미포함 | 리팩토링과 무관. 단 `indexLoader.ts` 가 `/ocr/*.bin` 을 fetch 하므로 배포본에서 OCR import 는 인덱스 로드 실패. **후순위로 보류** |
+| §3 Tier 1 "8 파일 삭제 (1 commit)" | `templateMatch.ts` / `cv.ts` 는 git 에 커밋된 적 없는 로컬 파일. `82edbf9` 의 실제 삭제는 6 파일 | 없음 |
+| §7 "AppError — 4 repository, 10+ 호출" | 12회 등장은 import 줄 포함. 실사용 ~8회 | 없음 — "삭제 금지" 결론 동일 |
+| §3 "pipeline.ts transitive 의존: cellDetection, iconExtraction, indexLoader, multiStageMatch, countOcr" | 2차 의존 `gridDetection`, `colorHist`, `hog`, `phash`, `embedding`, `types` 누락 | 없음 — "templateMatch/cv 외 손대지 마" 결론 동일 |
+
+### 8.2 계획과 다르게 적용된 부분
+
+- **Tier 3 barrel**: 계획은 외부 사용 4개만 re-export. 실제 `cultivationCalculator/index.ts` 는 `aggregatePerStudent`, `aggregateAll`, `BondAwareAggregate`, `EquipmentMap` 까지 8개 export (추가 4개는 외부 사용 0). 동작 영향 없음.
+
+### 8.3 누락되어 있던 후속 정리 (2026-10-02 반영)
+
+- `@techstark/opencv-js` — `cv.ts` 삭제 후 `tools/_cv_debug.ts` 만 사용 → `dependencies` → `devDependencies` 이동.
+- `OcrImportDialog.tsx` 의 lazy-load 주석 "OpenCV.js + Tesseract.js" → "transformers.js + Tesseract.js".
+- CLAUDE.md — Tier 2 가 utils 한 줄만 수정해서 남아 있던 stale 서술 정정:
+  - "`character.json` and `weapon.json` are legacy" 제거 (Tier 1 에서 삭제됨)
+  - "`cultivationCalculator.ts` ~500 / ~700 lines" → `cultivationCalculator/` 디렉터리 구조로 갱신 (Tier 3)
+
+### 8.4 문서 내 수치 정정 (본문에 직접 반영)
+
+- §2 "6개 도메인" → 5개 도메인 + 공통 helper + 합산
+- §3 Tier 3 "7 files" → index 포함 8 files
+- §3·§7 Tier 4 "7 line 차이" → 8 line (import 1 + 함수명 1 + repository 호출 5 + 제목 1)
+- §4 Tier 1 "6 파일 + 빈 JSON" → 코드 6 파일 + legacy JSON 2
+
+## 9. 2차 리팩토링 (2026-10-02) — 적용 완료, 미커밋
+
+Tier 1~4 이후 재스캔에서 나온 항목. 결정 사항은 사용자 확인 (Q1~Q4 모두 A).
+
+| # | 항목 | 결과 |
+|---|---|---|
+| 1 | Base64 content codec 중복 (guide / secretNote) | `utils/contentCodec.ts` 로 통합 |
+| 2 | 이미지 업로드 중복 + 썸네일 검증 누락 (Q1: 썸네일도 검증) | `repositories/imageRepository.ts` (`upload` 검증 포함 / `deleteByUrl`). `service/guide/utils/uploadGuideImage.ts` 삭제 |
+| 3 | 플래너 3 페이지 SchaleDB 로딩 중복 + Map 타입 5중 정의 | `types/schaledb.ts` 에 `SchaleDB{Student,Item,Equipment}Map`, `planner/utils/plannerGameData.ts` (`loadPlannerGameData` / `loadCommonFavorTags`). 로딩·에러 흐름 무변경 |
+| 4 | repository 에러 3종 혼재 (Q3: AppError 통일) | 모든 repository → `AppError` (한국어 메시지 + 원본 `cause`). 코드 `VALIDATION` / `UNAUTHORIZED` 추가, 미사용 `NOT_IMPLEMENTED` 제거 |
+| 5 | REST 직접 호출 (Q2: auth lock 우회책 → 유지) | 헤더 조립만 `lib/supabaseRest.ts` 로 공통화. 미사용 `AuthRepository.updateEmail` / `onAuthStateChange` 삭제 |
+| 6 | 숫자 입력 불일치 (Q4: 전부 통일) | `components/form/NumberInput.tsx`. 플래너 6 컴포넌트 + 인벤토리 + OCR 수량 + Eligma + 보고서 + 이벤트 2 폼, 총 20개 input 교체 |
+| 7 | 권한 판정 분산 | `utils/roles.ts` + `useIsAdmin()` / `useCanEdit()`. 인라인 `role === '...'` 0건 |
+| 8 | CLAUDE.md 누락 | 라우트 2개, OCR 실제 구조, 위 모듈들 반영 |
+
+### 9.1 의도된 동작 변화
+
+- **숫자 입력**: 스피너 / 휠 변경 없음, 모바일 숫자 키패드, 포커스 시 전체 선택 (이벤트 폼·Eligma·OCR 은 신규). 입력 중 min 미만 / 빈칸은 확정 보류 후 blur 시 보정 — 이전엔 키 입력마다 즉시 clamp 되어 무기 레벨 등에서 "4" 입력 즉시 min 으로 튀거나, 목표 레벨 비우면 현재 레벨까지 1 로 끌려내려가던 문제 해소.
+- **에러 메시지**: Supabase 원문 대신 한국어 메시지. UI 노출처는 플래너 동기화 / 백업 / 에디터 이미지 업로드뿐 (나머지 화면은 자체 고정 문구).
+
+### 9.2 미결
+
+- ~~`GuideFormPage` 썸네일 UI 부재~~ → **해결 (입력 UI 추가 결정)**: `fc9890e` 부터 `handleImageChange` 가 input 에 연결된 적 없었음. 썸네일 선택 / 미리보기 / 선택 취소 / 기존 썸네일 제거 UI 추가. 선택 즉시 `ImageRepository.validate` 로 검증, `GuideFormData.removeImage` 로 제거 지원.
+- `service/guide/components/GuideCard.tsx`: import 0 (미사용). 목록 페이지는 썸네일을 표시하지 않음 → 현재 썸네일은 상세 페이지 상단에만 노출.
+- Rust `ocr_import` + Python 리소스 번들: 프론트 호출 0 (OCR 보류 영역이라 유지).
+- `public/ocr/` 인덱스 배포 누락 (후순위).

@@ -44,14 +44,14 @@ All source code lives under `my-site/src/`.
 - `service/{feature}/components/` — Feature-specific components
 - `service/calculator/events/` — Event calculator plugin system: `archetypes/{id}/` (Form + pure calc) registered in `archetypes/index.ts`
 - `service/secretNote/plugins/` — Note-type plugin system: `{type}/` (Editor + Viewer + serialize) registered in `plugins/registry.ts`
-- `service/planner/utils/` — Pure calculation utilities (`cultivationCalculator.ts` ~500 lines), static cost tables under `utils/tables/`, dual-backend factory (`plannerRepoFactory.ts`), backup/restore, OCR matching helpers
-- `components/` — Shared: `Header/`, `layouts/MainLayout`, `navigation/Sidebar`, `guards/AdminRoute` (3 guards in one file)
+- `service/planner/utils/` — Pure calculation utilities (`cultivationCalculator/` — per-domain files behind an `index.ts` barrel), static cost tables under `utils/tables/`, dual-backend factory (`plannerRepoFactory.ts`), shared SchaleDB loader for planner pages (`plannerGameData.ts`), backup/restore, OCR matching helpers
+- `components/` — Shared: `Header/`, `layouts/MainLayout`, `navigation/Sidebar`, `guards/AdminRoute` (3 guards in one file), `form/NumberInput` (all integer inputs — see Styling)
 - `repositories/` — Data access layer (Supabase / SchaleDB remote / static JSON / localStorage — see Repositories table)
 - `types/` — Domain types (per-module imports, no barrel)
-- `utils/` — Utility functions (`AppError`, `format.ts`)
+- `utils/` — Utility functions (`AppError`, `format.ts`, `contentCodec.ts` (Base64 content), `roles.ts` (`isAdminRole` / `canEditRole`))
 - `data/` — Static JSON: `crafting/` (3-stage recipes), `planner/` (exp/skill/potential/weapon cost tables), `events/` (per-event configs, glob-loaded by `eventRepository`), `reroll.{kr,jp}.json`, `weapon_star.json`, `studentAliases.json`
-- `stores/` — Zustand stores (`authStore` is the only one)
-- `lib/` — Infrastructure: `supabase.ts` (client), `schaledb.ts`+`schaledbCache.ts`+`schaledbImage.ts` (remote fetch + TTL cache + stale-while-error), `kvstore.ts` (`WebKVStore` ↔ `TauriKVStore`), `runtime.ts` (`isTauri()`), `sync.ts` (planner local↔cloud), `updater.ts` (Tauri auto-update), `ocrMatching.ts` (Korean-aware fuzzy matching)
+- `stores/` — Zustand stores (`authStore` is the only one; also exports `useIsAdmin()` / `useCanEdit()` boolean hooks)
+- `lib/` — Infrastructure: `supabase.ts` (client), `supabaseRest.ts` (raw-fetch writes — see Data flow), `schaledb.ts`+`schaledbCache.ts`+`schaledbImage.ts` (remote fetch + TTL cache + stale-while-error), `kvstore.ts` (`WebKVStore` ↔ `TauriKVStore`), `runtime.ts` (`isTauri()`), `sync.ts` (planner local↔cloud), `updater.ts` (Tauri auto-update), `ocrMatching.ts` (Korean-aware fuzzy matching)
 - `styles/` — `global.css` (Tailwind imports), `editor.css` (Tiptap styles)
 
 ### Routes
@@ -70,9 +70,11 @@ All source code lives under `my-site/src/`.
 | `/calculator/crafting` | CraftingCalcPage | — |
 | `/calculator/event` | EventCalcHubPage | — |
 | `/calculator/event/:eventId` | EventCalcDetailPage | — |
+| `/calculator/report` | ReportCalcPage | — |
 | `/planner/cultivation` | CultivationPlannerPage | — (works for anon via localStorage) |
 | `/planner/cultivation/:plannerStudentId` | PlannerStudentDetailPage | — |
 | `/planner/inventory` | InventoryPage | — (works for anon via localStorage) |
+| `/dev/label` | LabelPage | — (OCR 라벨링/진단 도구, 사이드바 미노출) |
 | `/login` | LoginPage | — (honors `?redirect=<path>` after login) |
 | `/signup` | SignUpPage | — |
 | `/mypage` | MyPage | — |
@@ -94,15 +96,17 @@ All source code lives under `my-site/src/`.
 - **AdminRoute** — admin only
 - **EditorRoute** — admin + editor
 - **AuthRoute** — any logged-in user (excludes `pending`)
+- Role checks go through `utils/roles.ts` (guards, Sidebar) or `useIsAdmin()` / `useCanEdit()` (components) — avoid inline `role === '...'` comparisons
 
 ### Data flow
 
 - **Dynamic user data** (guides, profiles, categories, secret notes, planner): Pages → Repositories → **Supabase** (PostgREST + JS SDK; planner uses RLS `user_id = auth.uid()`)
-- **Game data** (students, equipment, items, skills): Pages → `SchaleDBStudentRepository` / direct `fetchSchaleDB` → **SchaleDB JSON** (cached in localStorage with TTL + stale-while-error; LRU evict on `QuotaExceededError`). `studentRepository` is now a thin facade over the SchaleDB version — `src/data/character.json` and `weapon.json` are legacy.
+- **Game data** (students, equipment, items, skills): Pages → `SchaleDBStudentRepository` / direct `fetchSchaleDB` → **SchaleDB JSON** (cached in localStorage with TTL + stale-while-error; LRU evict on `QuotaExceededError`). `studentRepository` is now a thin facade over the SchaleDB version.
 - **Event configs**: `import.meta.glob('@/data/events/*.json', { eager: true })` — drop a JSON in, it's auto-listed.
 - **Cultivation planner — dual backend**: `plannerRepoFactory.getPlannerRepo(userId)` returns Supabase impl when logged in, `LocalPlannerRepository` (kvstore → localStorage in web / `@tauri-apps/plugin-store` JSON file in desktop) when anon. Same interface either way. Switching identities does NOT auto-merge; `lib/sync.ts` exposes explicit `pullFromCloud` / `pushToCloud` (last-write-wins) via `SyncDialog`.
-- Guide content is **Base64 encoded** before storage, decoded on read (same pattern for `secret_notes`)
-- Images stored in **Supabase Storage** (`guide-images` bucket; shared by guides and secret notes)
+- Guide content is **Base64 encoded** before storage, decoded on read (same pattern for `secret_notes`; shared codec in `utils/contentCodec.ts`)
+- Images stored in **Supabase Storage** (`guide-images` bucket; shared by guides and secret notes) via `ImageRepository`
+- **Raw REST writes (do not revert to SDK)**: guide insert/update and account updates (`updatePassword`) use `lib/supabaseRest.ts` (`restInsert` / `restUpdate` / `updateAuthUser`) instead of supabase-js. Calling the SDK inside an `onAuthStateChange` callback can deadlock supabase-js's internal auth lock and hang later SDK queries (af8ff4f).
 - Deletes are **soft delete** (`deleted_at` column)
 - Guide edits tracked via `guide_logs` table
 - `secret_notes` uses a 12-char random slug (DB trigger) and is only reachable via `/n/:slug`; anon access goes through a `SECURITY DEFINER` RPC so the table itself stays admin-only
@@ -114,7 +118,8 @@ All source code lives under `my-site/src/`.
 | Repository | Backend | Purpose |
 |------------|---------|---------|
 | `authRepository` | Supabase | Auth, user profiles, role management |
-| `guideRepository` | Supabase (SDK + REST) | Guide CRUD, image upload, audit logs |
+| `guideRepository` | Supabase (SDK + REST) | Guide CRUD, audit logs. Writes go through `lib/supabaseRest.ts` |
+| `imageRepository` | Supabase Storage | `guide-images` upload (JPG/PNG/GIF/WebP, ≤5MB → `VALIDATION` AppError) / delete. Used by guide thumbnails and all rich-text editors |
 | `categoryRepository` | Supabase | Guide categories |
 | `internalCategoryRepository` | Supabase | Internal notice categories |
 | `secretNoteRepository` | Supabase (SDK + RPC) | Admin-only notes with public slug-based URL (`/n/:slug`). Anon 열람은 `get_secret_note_by_slug` RPC 만 노출 |
@@ -127,7 +132,7 @@ All source code lives under `my-site/src/`.
 
 ### Styling
 
-100% Tailwind CSS utility classes. Dark mode supported (`dark:` variants). Mobile-first responsive design. Tiptap editor has dedicated styles in `styles/editor.css`.
+100% Tailwind CSS utility classes. Integer inputs use `components/form/NumberInput` (`type="text"` + `inputMode="numeric"`, select-all on focus, draft string while typing, range-clamped on blur) — don't add raw `type="number"` inputs. Dark mode supported (`dark:` variants). Mobile-first responsive design. Tiptap editor has dedicated styles in `styles/editor.css`.
 
 ### Type system
 
@@ -141,7 +146,7 @@ All source code lives under `my-site/src/`.
 - `types/reroll.ts` — RerollCategory, RerollStudent
 - `types/crafting.ts` — CraftingNode, CraftingItem
 - Per-module imports (e.g. `from '@/types/planner'`) — no barrel
-- Custom `AppError` class with error codes in `utils/AppError.ts`
+- Custom `AppError` class with error codes in `utils/AppError.ts` (`API_ERROR` / `NOT_FOUND` / `VALIDATION` / `UNAUTHORIZED` / `UNKNOWN`). **Repositories throw only `AppError`** with a Korean message; the original Supabase / REST error is kept in `cause` for logging
 
 ### Environment variables
 
@@ -157,12 +162,13 @@ VITE_SUPABASE_ANON_KEY=  # Supabase anon/public key
 - **Entry**: `src/lib.rs` registers `tauri_plugin_store`, `tauri_plugin_dialog`, `tauri_plugin_process`. On desktop it also registers `tauri_plugin_updater` (gated by `#[cfg(desktop)]` so mobile builds compile).
 - **Auto-update**: `lib/updater.ts` calls `check()` from `@tauri-apps/plugin-updater`; if an update exists, the header shows `UpdateBadge` and the user confirms before `downloadAndInstall()` + `relaunch()`. Update endpoint and minisign pubkey are pinned in `tauri.conf.json` → `plugins.updater` (GitHub Releases `latest.json`).
 - **Storage parity**: `kvstore.ts` exposes one interface for KV reads/writes; the web build uses `localStorage`, the Tauri build uses `@tauri-apps/plugin-store` (single `app.json` on disk). `LocalPlannerRepository` is environment-agnostic because it goes through `kvstore`.
-- **OCR inventory import**: `OcrImportDialog` lets the user pick screenshots, then invokes the Rust `ocr_import` command (`src-tauri/src/ocr.rs`). That command spawns a Python process running `tools/ocr/extract_inventory.py` (PaddleOCR). It prefers a local venv at `tools/ocr/venv/{bin,Scripts}/python` and falls back to system `python3`. Bundled Python resources are listed under `tauri.conf.json` → `bundle.resources`. OCR text-to-item matching happens in `lib/ocrMatching.ts` (English→Korean school aliases, jamo N-gram similarity, Levenshtein fallback).
+- **OCR inventory import** (on hold since 2026-06-15, see `PROGRESS_ocr_visual_matching.md`): `OcrImportDialog` runs a **browser-side** pipeline (`lib/ocr/pipeline.ts`, lazy-loaded): grid/cell detection → icon extraction → multi-stage visual matching (color hist / pHash / HOG / DINOv2 embedding via `@huggingface/transformers`) → count OCR via `tesseract.js`. The matching index is fetched from `public/ocr/*.bin` (gitignored, built with `npm run build:ocr-index` — **not present in deployed builds**). `LabelPage` (`/dev/label`) is the labeling/diagnostic tool for this pipeline. Text-to-item name matching lives in `lib/ocrMatching.ts` (English→Korean school aliases, jamo N-gram similarity, Levenshtein fallback).
+- **Legacy Python OCR**: the Rust `ocr_import` command (`src-tauri/src/ocr.rs`, spawns `tools/ocr/extract_inventory.py` with PaddleOCR; venv at `tools/ocr/venv/{bin,Scripts}/python`, falls back to `python3`) is still registered in `lib.rs` and bundled via `tauri.conf.json` → `bundle.resources`, but the frontend no longer invokes it.
 - **CSP** allows Supabase, SchaleDB, YouTube embeds — defined in `tauri.conf.json` → `app.security.csp`.
 
 ## Cultivation planner notes
 
-- The deficit report (`utils/cultivationCalculator.ts`, ~700 lines of pure functions) is the single source of "what materials are needed". It uses synthetic keys `credit` / `student_exp` / `weapon_exp` for resources that have no SchaleDB item id; the UI distinguishes those from numeric item ids when rendering. Cost tables are under `utils/tables/`.
+- The deficit report (`utils/cultivationCalculator/`, pure functions split by domain: `_shared` → `levelCost` / `gearWeapon` / `skills` / `potentials` / `bondGifts` → `aggregate`, re-exported via `index.ts`) is the single source of "what materials are needed". It uses synthetic keys `credit` / `student_exp` / `weapon_exp` for resources that have no SchaleDB item id; the UI distinguishes those from numeric item ids when rendering. Cost tables are under `utils/tables/`.
 - `inventoryCatalog.ts` builds the grouped inventory page from SchaleDB items (student reports, weapon parts, equipment stones, skill books/CDs, equipment blueprints, gear favor materials, artifacts, WB stones, per-student elephs).
 - Planner state has dual storage; tests/dev should be aware that an anon session's data lives in localStorage (web) or Tauri store file (desktop) and is **not** synced automatically when the user logs in — they must trigger `SyncDialog` (push or pull).
 - Backup/restore via `plannerBackup.ts` + `BackupButtons` produces a JSON file download usable across web ↔ desktop. `BACKUP_VERSION = 1` — adding optional fields to `PlannerTargets` is backward-compatible (no version bump needed).
