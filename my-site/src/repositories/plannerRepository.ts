@@ -13,7 +13,7 @@ export class PlannerRepository {
       .eq('user_id', userId)
       .order('sort_order', { ascending: true });
 
-    if (error) throw error;
+    if (error) throw new AppError('플래너 학생 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map(PlannerRepository.toPlannerStudent);
   }
@@ -43,9 +43,9 @@ export class PlannerRepository {
 
     if (error) {
       if (error.code === '23505') {
-        throw new AppError('이미 플래너에 추가된 학생입니다.', 'API_ERROR');
+        throw new AppError('이미 플래너에 추가된 학생입니다.', 'API_ERROR', error);
       }
-      throw error;
+      throw new AppError('플래너 학생 추가에 실패했습니다.', 'API_ERROR', error);
     }
 
     return PlannerRepository.toPlannerStudent(data);
@@ -68,7 +68,7 @@ export class PlannerRepository {
       .update(updateData)
       .eq('id', id);
 
-    if (error) throw new AppError('플래너 학생 수정에 실패했습니다.', 'API_ERROR');
+    if (error) throw new AppError('플래너 학생 수정에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -80,7 +80,7 @@ export class PlannerRepository {
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new AppError('플래너 학생 제거에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -95,7 +95,7 @@ export class PlannerRepository {
       .from('planner_students')
       .delete()
       .eq('user_id', userId);
-    if (delError) throw delError;
+    if (delError) throw new AppError('기존 학생 데이터 삭제에 실패했습니다.', 'API_ERROR', delError);
 
     if (students.length === 0) return;
 
@@ -107,7 +107,7 @@ export class PlannerRepository {
     }));
     const { error: insError } = await supabase.from('planner_students').insert(rows);
     if (insError) {
-      throw new AppError('학생 데이터 가져오기에 실패했습니다.', 'API_ERROR');
+      throw new AppError('학생 데이터 가져오기에 실패했습니다.', 'API_ERROR', insError);
     }
   }
 
@@ -121,7 +121,7 @@ export class PlannerRepository {
         .update({ sort_order: i })
         .eq('id', orderedIds[i]);
 
-      if (error) throw error;
+      if (error) throw new AppError('플래너 학생 순서 변경에 실패했습니다.', 'API_ERROR', error);
     }
   }
 
@@ -135,7 +135,7 @@ export class PlannerRepository {
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) throw new AppError('인벤토리를 불러오지 못했습니다.', 'API_ERROR', error);
     if (!data) return {};
 
     return (data.items as InventoryMap) ?? {};
@@ -149,7 +149,7 @@ export class PlannerRepository {
       .from('planner_inventory')
       .upsert({ user_id: userId, items }, { onConflict: 'user_id' });
 
-    if (error) throw error;
+    if (error) throw new AppError('인벤토리 저장에 실패했습니다.', 'API_ERROR', error);
   }
 
   private static toPlannerStudent(row: Record<string, unknown>): PlannerStudent {

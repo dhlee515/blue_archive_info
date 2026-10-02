@@ -1,6 +1,7 @@
 import type { AuthUser, UserRole, UserProfile } from '@/types/auth';
-import type { Subscription } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { updateAuthUser } from '@/lib/supabaseRest';
+import { AppError } from '@/utils/AppError';
 
 export class AuthRepository {
   /**
@@ -8,7 +9,7 @@ export class AuthRepository {
    */
   static async signIn(email: string, password: string): Promise<AuthUser> {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) throw new AppError('이메일 또는 비밀번호가 올바르지 않습니다.', 'API_ERROR', error);
 
     return AuthRepository.fetchAuthUser(data.user.id, data.user.email);
   }
@@ -18,14 +19,14 @@ export class AuthRepository {
    */
   static async signUp(email: string, password: string, nickname: string): Promise<void> {
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-    if (!data.user) throw new Error('회원가입에 실패했습니다.');
+    if (error) throw new AppError('회원가입에 실패했습니다.', 'API_ERROR', error);
+    if (!data.user) throw new AppError('회원가입에 실패했습니다.', 'API_ERROR');
 
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({ id: data.user.id, nickname });
 
-    if (profileError) throw profileError;
+    if (profileError) throw new AppError('프로필 생성에 실패했습니다.', 'API_ERROR', profileError);
   }
 
   /**
@@ -33,7 +34,7 @@ export class AuthRepository {
    */
   static async signOut(): Promise<void> {
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (error) throw new AppError('로그아웃에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -47,21 +48,6 @@ export class AuthRepository {
   }
 
   /**
-   * 인증 상태 변경을 구독합니다.
-   */
-  static onAuthStateChange(callback: (user: AuthUser | null) => void): Subscription {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
-        callback(null);
-        return;
-      }
-      const authUser = await AuthRepository.fetchAuthUser(session.user.id, session.user.email);
-      callback(authUser);
-    });
-    return subscription;
-  }
-
-  /**
    * 전체 유저 프로필 목록을 가져옵니다. (관리자용)
    */
   static async getAllUsers(): Promise<UserProfile[]> {
@@ -71,7 +57,7 @@ export class AuthRepository {
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw new AppError('유저 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map((row) => ({
       id: row.id as string,
@@ -91,58 +77,14 @@ export class AuthRepository {
       .update({ nickname })
       .eq('id', userId);
 
-    if (error) throw error;
-  }
-
-  /**
-   * 이메일을 변경합니다.
-   */
-  static async updateEmail(newEmail: string): Promise<void> {
-    const session = await AuthRepository.getSessionToken();
-    if (!session) throw new Error('로그인이 필요합니다.');
-
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ email: newEmail }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.msg || '이메일 변경에 실패했습니다.');
-    }
+    if (error) throw new AppError('닉네임 변경에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
    * 비밀번호를 변경합니다.
    */
   static async updatePassword(newPassword: string): Promise<void> {
-    const session = await AuthRepository.getSessionToken();
-    if (!session) throw new Error('로그인이 필요합니다.');
-
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ password: newPassword }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.msg || '비밀번호 변경에 실패했습니다.');
-    }
-  }
-
-  private static async getSessionToken(): Promise<string | null> {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ?? null;
+    await updateAuthUser({ password: newPassword }, '비밀번호 변경에 실패했습니다.');
   }
 
   /**
@@ -154,7 +96,7 @@ export class AuthRepository {
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', userId);
 
-    if (error) throw error;
+    if (error) throw new AppError('유저 비활성화에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -166,7 +108,7 @@ export class AuthRepository {
       .update({ deleted_at: null })
       .eq('id', userId);
 
-    if (error) throw error;
+    if (error) throw new AppError('유저 복원에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -179,7 +121,7 @@ export class AuthRepository {
       .not('deleted_at', 'is', null)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw new AppError('비활성화된 유저 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map((row) => ({
       id: row.id as string,
@@ -199,7 +141,7 @@ export class AuthRepository {
       .update({ role })
       .eq('id', userId);
 
-    if (error) throw error;
+    if (error) throw new AppError('역할 변경에 실패했습니다.', 'API_ERROR', error);
   }
 
   private static async fetchAuthUser(id: string, email?: string | null): Promise<AuthUser> {

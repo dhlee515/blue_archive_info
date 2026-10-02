@@ -1,68 +1,9 @@
 import type { Guide, GuideFormData, GuideLog } from '@/types/guide';
 import { supabase } from '@/lib/supabase';
 import { AppError } from '@/utils/AppError';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-function encodeContent(html: string): string {
-  const bytes = new TextEncoder().encode(html);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-function decodeContent(encoded: string): string {
-  try {
-    const binary = atob(encoded);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new TextDecoder().decode(bytes);
-  } catch {
-    return encoded;
-  }
-}
-
-async function getAccessToken(): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? SUPABASE_KEY;
-}
-
-async function restPost(table: string, body: Record<string, unknown>): Promise<void> {
-  const token = await getAccessToken();
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'apikey': SUPABASE_KEY,
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `${table} insert 실패`);
-  }
-}
-
-async function restPatch(table: string, body: Record<string, unknown>, filter: string): Promise<void> {
-  const token = await getAccessToken();
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'apikey': SUPABASE_KEY,
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `${table} update 실패`);
-  }
-}
+import { encodeContent, decodeContent } from '@/utils/contentCodec';
+import { restInsert, restUpdate } from '@/lib/supabaseRest';
+import { ImageRepository } from '@/repositories/imageRepository';
 
 export class GuideRepository {
   /**
@@ -81,7 +22,7 @@ export class GuideRepository {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw new AppError('가이드 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     const rows = data ?? [];
     const authorIds = [...new Set(rows.map((r) => r.author_id as string))];
@@ -108,7 +49,7 @@ export class GuideRepository {
       .eq('id', id)
       .single();
 
-    if (error || !data) throw new AppError('가이드를 찾을 수 없습니다.', 'NOT_FOUND');
+    if (error || !data) throw new AppError('가이드를 찾을 수 없습니다.', 'NOT_FOUND', error);
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -125,17 +66,17 @@ export class GuideRepository {
   static async createGuide(formData: GuideFormData, userId: string): Promise<Guide> {
     let imageUrl: string | null = null;
     if (formData.imageFile) {
-      imageUrl = await GuideRepository.uploadImage(formData.imageFile);
+      imageUrl = await ImageRepository.upload(formData.imageFile);
     }
 
-    await restPost('guides', {
+    await restInsert('guides', {
       title: formData.title,
       category_id: formData.categoryId,
       content: encodeContent(formData.content),
       image_url: imageUrl,
       author_id: userId,
       is_internal: formData.isInternal,
-    });
+    }, '가이드 작성에 실패했습니다.');
 
     // insert 후 방금 생성된 글의 id 조회
     const { data: latest } = await supabase
@@ -162,18 +103,18 @@ export class GuideRepository {
     let imageUrl = existing.imageUrl;
     if (formData.imageFile) {
       if (existing.imageUrl) {
-        await GuideRepository.deleteImage(existing.imageUrl);
+        await ImageRepository.deleteByUrl(existing.imageUrl);
       }
-      imageUrl = await GuideRepository.uploadImage(formData.imageFile);
+      imageUrl = await ImageRepository.upload(formData.imageFile);
     }
 
-    await restPatch('guides', {
+    await restUpdate('guides', {
       title: formData.title,
       category_id: formData.categoryId,
       content: encodeContent(formData.content),
       image_url: imageUrl,
       is_internal: formData.isInternal,
-    }, `id=eq.${id}`);
+    }, `id=eq.${id}`, '가이드 수정에 실패했습니다.');
 
     await GuideRepository.insertLog(id, userId, 'update');
 
@@ -184,7 +125,7 @@ export class GuideRepository {
    * 가이드를 삭제합니다. (soft delete)
    */
   static async deleteGuide(id: string, userId: string): Promise<void> {
-    await restPatch('guides', { deleted_at: new Date().toISOString() }, `id=eq.${id}`);
+    await restUpdate('guides', { deleted_at: new Date().toISOString() }, `id=eq.${id}`, '가이드 삭제에 실패했습니다.');
     await GuideRepository.insertLog(id, userId, 'delete');
   }
 
@@ -198,7 +139,7 @@ export class GuideRepository {
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw new AppError('삭제된 가이드 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     const rows = data ?? [];
     const authorIds = [...new Set(rows.map((r) => r.author_id as string))];
@@ -219,7 +160,7 @@ export class GuideRepository {
    * 삭제된 글을 복원합니다. (관리자용)
    */
   static async restoreGuide(id: string, userId: string): Promise<void> {
-    await restPatch('guides', { deleted_at: null }, `id=eq.${id}`);
+    await restUpdate('guides', { deleted_at: null }, `id=eq.${id}`, '가이드 복원에 실패했습니다.');
     await GuideRepository.insertLog(id, userId, 'restore');
   }
 
@@ -233,7 +174,7 @@ export class GuideRepository {
       .eq('guide_id', guideId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw new AppError('가이드 로그를 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map((row) => {
       const profiles = row.profiles as { nickname: string } | null;
@@ -250,36 +191,10 @@ export class GuideRepository {
 
   private static async insertLog(guideId: string, editorId: string, action: string): Promise<void> {
     try {
-      await restPost('guide_logs', { guide_id: guideId, editor_id: editorId, action });
+      await restInsert('guide_logs', { guide_id: guideId, editor_id: editorId, action }, '가이드 로그 기록에 실패했습니다.');
     } catch (e) {
       console.error('Failed to insert log:', e);
     }
-  }
-
-  private static async uploadImage(file: File): Promise<string> {
-    const ext = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from('guide-images')
-      .upload(fileName, file);
-
-    if (error) throw error;
-
-    const { data } = supabase.storage
-      .from('guide-images')
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
-  }
-
-  private static async deleteImage(url: string): Promise<void> {
-    const path = url.split('/guide-images/').pop();
-    if (!path) return;
-
-    await supabase.storage
-      .from('guide-images')
-      .remove([path]);
   }
 
   private static toGuide(row: Record<string, unknown>): Guide {

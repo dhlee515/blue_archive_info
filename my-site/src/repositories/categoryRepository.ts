@@ -1,5 +1,6 @@
 import type { Category } from '@/types/guide';
 import { supabase } from '@/lib/supabase';
+import { AppError } from '@/utils/AppError';
 
 export class CategoryRepository {
   /**
@@ -13,7 +14,7 @@ export class CategoryRepository {
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map(CategoryRepository.toCategory);
   }
@@ -32,7 +33,7 @@ export class CategoryRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 추가에 실패했습니다.', 'API_ERROR', error);
 
     return CategoryRepository.toCategory(data);
   }
@@ -46,7 +47,7 @@ export class CategoryRepository {
       .update({ name })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 이름 변경에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -59,7 +60,7 @@ export class CategoryRepository {
         .update({ sort_order: i })
         .eq('id', orderedIds[i]);
 
-      if (error) throw error;
+      if (error) throw new AppError('카테고리 순서 변경에 실패했습니다.', 'API_ERROR', error);
     }
   }
 
@@ -72,7 +73,7 @@ export class CategoryRepository {
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 삭제에 실패했습니다.', 'API_ERROR', error);
   }
 
   private static toCategory(row: Record<string, unknown>): Category {

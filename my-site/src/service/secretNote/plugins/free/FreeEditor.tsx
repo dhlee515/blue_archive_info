@@ -1,5 +1,5 @@
 import RichTextEditor from '@/service/guide/components/RichTextEditor';
-import { uploadGuideImage } from '@/service/guide/utils/uploadGuideImage';
+import { ImageRepository } from '@/repositories/imageRepository';
 
 interface Props {
   value: string;
@@ -7,5 +7,5 @@ interface Props {
 }
 
 export default function FreeEditor({ value, onChange }: Props) {
-  return <RichTextEditor content={value} onChange={onChange} onImageUpload={uploadGuideImage} />;
+  return <RichTextEditor content={value} onChange={onChange} onImageUpload={ImageRepository.upload} />;
 }

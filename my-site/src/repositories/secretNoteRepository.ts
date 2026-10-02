@@ -1,25 +1,8 @@
 import type { NoteType, SecretNote, SecretNoteFormData } from '@/types/secretNote';
 import { supabase } from '@/lib/supabase';
 import { AppError } from '@/utils/AppError';
+import { encodeContent, decodeContent } from '@/utils/contentCodec';
 import { getPlugin } from '@/service/secretNote/plugins/registry';
-
-function encodeContent(html: string): string {
-  const bytes = new TextEncoder().encode(html);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-function decodeContent(encoded: string): string {
-  try {
-    const binary = atob(encoded);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new TextDecoder().decode(bytes);
-  } catch {
-    return encoded;
-  }
-}
 
 export class SecretNoteRepository {
   /**
@@ -27,7 +10,7 @@ export class SecretNoteRepository {
    */
   static async getNoteBySlug(slug: string): Promise<SecretNote | null> {
     const { data, error } = await supabase.rpc('get_secret_note_by_slug', { p_slug: slug });
-    if (error) throw error;
+    if (error) throw new AppError('비밀 노트를 불러오지 못했습니다.', 'API_ERROR', error);
 
     const row = (data ?? [])[0];
     if (!row) return null;
@@ -45,7 +28,7 @@ export class SecretNoteRepository {
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw new AppError('비밀 노트 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map(SecretNoteRepository.toNote);
   }
@@ -60,7 +43,7 @@ export class SecretNoteRepository {
       .eq('id', id)
       .single();
 
-    if (error || !data) throw new AppError('비밀 노트를 찾을 수 없습니다.', 'NOT_FOUND');
+    if (error || !data) throw new AppError('비밀 노트를 찾을 수 없습니다.', 'NOT_FOUND', error);
 
     return SecretNoteRepository.toNote(data);
   }
@@ -91,7 +74,7 @@ export class SecretNoteRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new AppError('비밀 노트 작성에 실패했습니다.', 'API_ERROR', error);
 
     return SecretNoteRepository.toNote(data);
   }
@@ -120,7 +103,7 @@ export class SecretNoteRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new AppError('비밀 노트 수정에 실패했습니다.', 'API_ERROR', error);
 
     return SecretNoteRepository.toNote(data);
   }
@@ -134,7 +117,7 @@ export class SecretNoteRepository {
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new AppError('비밀 노트 삭제에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -147,7 +130,7 @@ export class SecretNoteRepository {
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw new AppError('삭제된 비밀 노트 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map(SecretNoteRepository.toNote);
   }
@@ -161,7 +144,7 @@ export class SecretNoteRepository {
       .update({ deleted_at: null })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new AppError('비밀 노트 복원에 실패했습니다.', 'API_ERROR', error);
   }
 
   /**
@@ -176,7 +159,7 @@ export class SecretNoteRepository {
       .select('slug')
       .single();
 
-    if (error || !data) throw new AppError('슬러그 재발급에 실패했습니다.', 'API_ERROR');
+    if (error || !data) throw new AppError('슬러그 재발급에 실패했습니다.', 'API_ERROR', error);
 
     return data.slug as string;
   }

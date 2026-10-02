@@ -4,7 +4,7 @@ import { RuleIcon } from '../RuleIcon';
 import { ALL_COLORS, COLOR_BG, COLOR_FG } from './colors';
 import { CURATED_LUCIDE_ICONS } from './icons';
 import RichTextEditor from '@/service/guide/components/RichTextEditor';
-import { uploadGuideImage } from '@/service/guide/utils/uploadGuideImage';
+import { ImageRepository } from '@/repositories/imageRepository';
 import { bodyForEditor } from './bodyFormat';
 
 interface Props {
@@ -287,7 +287,7 @@ function ItemBodyEditor({ value, onChange }: { value: string; onChange: (body: s
     <RichTextEditor
       content={initial}
       onChange={onChange}
-      onImageUpload={uploadGuideImage}
+      onImageUpload={ImageRepository.upload}
       expandable
     />
   );

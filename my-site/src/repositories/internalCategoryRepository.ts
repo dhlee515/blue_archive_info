@@ -1,5 +1,6 @@
 import type { Category } from '@/types/guide';
 import { supabase } from '@/lib/supabase';
+import { AppError } from '@/utils/AppError';
 
 export class InternalCategoryRepository {
   static async getCategories(): Promise<Category[]> {
@@ -10,7 +11,7 @@ export class InternalCategoryRepository {
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 목록을 불러오지 못했습니다.', 'API_ERROR', error);
 
     return (data ?? []).map(InternalCategoryRepository.toCategory);
   }
@@ -25,7 +26,7 @@ export class InternalCategoryRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 추가에 실패했습니다.', 'API_ERROR', error);
 
     return InternalCategoryRepository.toCategory(data);
   }
@@ -36,7 +37,7 @@ export class InternalCategoryRepository {
       .update({ name })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 이름 변경에 실패했습니다.', 'API_ERROR', error);
   }
 
   static async reorder(orderedIds: string[]): Promise<void> {
@@ -46,7 +47,7 @@ export class InternalCategoryRepository {
         .update({ sort_order: i })
         .eq('id', orderedIds[i]);
 
-      if (error) throw error;
+      if (error) throw new AppError('카테고리 순서 변경에 실패했습니다.', 'API_ERROR', error);
     }
   }
 
@@ -56,7 +57,7 @@ export class InternalCategoryRepository {
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new AppError('카테고리 삭제에 실패했습니다.', 'API_ERROR', error);
   }
 
   private static toCategory(row: Record<string, unknown>): Category {
