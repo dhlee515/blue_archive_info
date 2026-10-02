@@ -127,7 +127,7 @@ export default function OcrImportDialog({ catalog, currentInventory, onClose, on
       const aggregatedItems: OcrItem[] = [];
       const warningsAcc: string[] = [];
 
-      // pipeline 모듈(OpenCV.js + Tesseract.js)을 첫 사용 시점에만 lazy load → 메인 번들 격리.
+      // pipeline 모듈(transformers.js + Tesseract.js)을 첫 사용 시점에만 lazy load → 메인 번들 격리.
       const { runOcrPipeline } = await import('@/lib/ocr/pipeline');
 
       for (let fi = 0; fi < selectedFiles.length; fi++) {
