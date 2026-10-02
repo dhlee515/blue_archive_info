@@ -39,5 +39,7 @@ export interface GuideFormData {
   categoryId: string;
   content: string;
   imageFile: File | null;
+  /** 수정 시 기존 썸네일 제거 (imageFile 이 있으면 무시 — 교체가 우선) */
+  removeImage?: boolean;
   isInternal: boolean;
 }

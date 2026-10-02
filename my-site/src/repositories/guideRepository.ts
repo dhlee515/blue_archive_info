@@ -106,6 +106,9 @@ export class GuideRepository {
         await ImageRepository.deleteByUrl(existing.imageUrl);
       }
       imageUrl = await ImageRepository.upload(formData.imageFile);
+    } else if (formData.removeImage && existing.imageUrl) {
+      await ImageRepository.deleteByUrl(existing.imageUrl);
+      imageUrl = null;
     }
 
     await restUpdate('guides', {

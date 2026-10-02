@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import type { Category } from '@/types/guide';
 import { GuideRepository } from '@/repositories/guideRepository';
@@ -7,6 +7,7 @@ import { InternalCategoryRepository } from '@/repositories/internalCategoryRepos
 import { useAuthStore } from '@/stores/authStore';
 import RichTextEditor from '../components/RichTextEditor';
 import { ImageRepository } from '@/repositories/imageRepository';
+import { AppError } from '@/utils/AppError';
 
 export default function GuideFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,8 +20,12 @@ export default function GuideFormPage() {
   const [categoryId, setCategoryId] = useState('');
   const [content, setContent] = useState('');
   const [isInternal, setIsInternal] = useState(searchParams.get('internal') === 'true');
+  // 썸네일 — existingImageUrl: 저장된 이미지 (수정 시), imageFile/imagePreview: 새로 고른 파일
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -36,7 +41,7 @@ export default function GuideFormPage() {
           setCategoryId(guide.categoryId);
           setContent(guide.content);
           setIsInternal(guide.isInternal);
-          setImagePreview(guide.imageUrl);
+          setExistingImageUrl(guide.imageUrl);
           internal = guide.isInternal;
         }
 
@@ -63,14 +68,36 @@ export default function GuideFormPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
-    setImageFile(file);
+    e.target.value = ''; // 같은 파일 재선택도 onChange 가 발생하도록
+    if (!file) return;
 
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+    try {
+      ImageRepository.validate(file);
+    } catch (error) {
+      alert(error instanceof AppError ? error.message : '이미지를 사용할 수 없습니다.');
+      return;
     }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
+
+  // 새로 고른 파일 취소 → 저장된 썸네일 (있으면) 로 복귀
+  const handleImageCancel = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  // 저장된 썸네일 제거 (저장 시 반영)
+  const handleImageRemove = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setRemoveImage(true);
+  };
+
+  const shownImage = imagePreview ?? (removeImage ? null : existingImageUrl);
 
   const handleSubmit = async () => {
     if (!title.trim() || !categoryId) return;
@@ -78,7 +105,7 @@ export default function GuideFormPage() {
 
     try {
       if (!user) throw new Error('로그인이 필요합니다.');
-      const formData = { title, categoryId, content, imageFile, isInternal };
+      const formData = { title, categoryId, content, imageFile, removeImage, isInternal };
 
       if (isEdit && id) {
         await GuideRepository.updateGuide(id, formData, user.id);
@@ -89,7 +116,7 @@ export default function GuideFormPage() {
       }
     } catch (error) {
       console.error('Failed to save guide:', error);
-      alert('저장에 실패했습니다.');
+      alert(error instanceof AppError && error.code === 'VALIDATION' ? error.message : '저장에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -141,6 +168,63 @@ export default function GuideFormPage() {
             </select>
           ) : (
             <p className="text-sm text-gray-400 dark:text-slate-400">카테고리가 없습니다. 관리자에게 문의하세요.</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">
+            썸네일 <span className="font-normal text-gray-400 dark:text-slate-500">(선택 · JPG/PNG/GIF/WebP, 5MB 이하)</span>
+          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ImageRepository.ACCEPT}
+            onChange={handleImageChange}
+            className="hidden"
+          />
+          {shownImage ? (
+            <div className="flex flex-col gap-2">
+              <img
+                src={shownImage}
+                alt="썸네일 미리보기"
+                className="w-full max-h-60 object-cover rounded-lg border border-gray-200 dark:border-slate-700"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-sm px-3 py-1.5 rounded-md border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
+                >
+                  변경
+                </button>
+                {imageFile ? (
+                  <button
+                    type="button"
+                    onClick={handleImageCancel}
+                    className="text-sm px-3 py-1.5 rounded-md border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  >
+                    선택 취소
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleImageRemove}
+                    className="text-sm px-3 py-1.5 rounded-md border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                  >
+                    제거
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-28 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 dark:border-slate-600 text-sm text-gray-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors"
+            >
+              <span className="font-medium">썸네일 이미지 선택</span>
+              {removeImage && <span className="text-xs text-red-500 dark:text-red-400">저장하면 기존 썸네일이 제거됩니다</span>}
+            </button>
           )}
         </div>
 
