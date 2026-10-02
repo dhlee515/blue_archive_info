@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { canEditRole, isAdminRole } from '@/utils/roles';
 
 interface Props {
   isOpen: boolean;
@@ -128,7 +129,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
       <div className="flex flex-col gap-1 pb-3 border-b border-gray-200 dark:border-slate-700 mb-1">
         {user ? (
           <>
-            {user.role === 'admin' && (
+            {isAdminRole(user.role) && (
               <>
                 <Link
                   to="/admin/users"
@@ -156,7 +157,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                 </Link>
               </>
             )}
-            {(user.role === 'admin' || user.role === 'editor') && (
+            {canEditRole(user.role) && (
               <Link
                 to="/admin/notices"
                 onClick={onClose}

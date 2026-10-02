@@ -2,20 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Check, Loader2, Search, X, ScanLine, Save } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { fetchSchaleDB } from '@/lib/schaledbCache';
 import { isTauri } from '@/lib/runtime';
-import type { SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
 import type { InventoryMap } from '@/types/planner';
 import { buildInventoryCatalog } from '../utils/inventoryCatalog';
 import { getMaterialInfo } from '../utils/materialInfo';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
+import { EMPTY_GAME_DATA, loadPlannerGameData } from '../utils/plannerGameData';
 import BackupButtons from '../components/BackupButtons';
 import InventoryItemRow from '../components/InventoryItemRow';
 import OcrImportDialog from '../components/OcrImportDialog';
 
-type ItemsMap = Record<string, SchaleDBItem>;
-type EquipmentMap = Record<string, SchaleDBEquipment>;
-type StudentsMap = Record<string, SchaleDBStudent>;
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
 export default function InventoryPage() {
@@ -23,9 +19,8 @@ export default function InventoryPage() {
   const repo = useMemo(() => getPlannerRepo(user?.id ?? null), [user?.id]);
   const isGuest = !user;
 
-  const [itemsData, setItemsData] = useState<ItemsMap>({});
-  const [equipmentData, setEquipmentData] = useState<EquipmentMap>({});
-  const [studentsData, setStudentsData] = useState<StudentsMap>({});
+  const [gameData, setGameData] = useState(EMPTY_GAME_DATA);
+  const { students: studentsData, items: itemsData, equipment: equipmentData } = gameData;
   const [inventory, setInventory] = useState<InventoryMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,16 +35,12 @@ export default function InventoryPage() {
     let mounted = true;
     (async () => {
       try {
-        const [items, equipment, students, inv] = await Promise.all([
-          fetchSchaleDB<ItemsMap>('items'),
-          fetchSchaleDB<EquipmentMap>('equipment'),
-          fetchSchaleDB<StudentsMap>('students'),
+        const [gd, inv] = await Promise.all([
+          loadPlannerGameData(),
           repo.getInventory(),
         ]);
         if (!mounted) return;
-        setItemsData(items);
-        setEquipmentData(equipment);
-        setStudentsData(students);
+        setGameData(gd);
         setInventory(inv);
         savedRef.current = inv;
       } catch (e) {

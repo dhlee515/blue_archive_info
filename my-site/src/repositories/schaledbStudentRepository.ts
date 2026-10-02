@@ -2,7 +2,7 @@
 
 import { fetchSchaleDB } from '@/lib/schaledbCache';
 import { studentPortraitUrl } from '@/lib/schaledbImage';
-import type { SchaleDBStudent, SchaleDBSkill } from '@/types/schaledb';
+import type { SchaleDBStudent, SchaleDBStudentMap, SchaleDBSkill } from '@/types/schaledb';
 import type {
   Student,
   StudentDetail,
@@ -35,9 +35,6 @@ const TACTIC_ROLE_MAP: Record<string, StudentRoleType> = {
   Supporter: 'Supporter',
   Vehicle: 'Vehicle',
 };
-
-/** schaledb.com은 객체 형태 { "10000": {...}, ... }로 반환 */
-type SchaleDBStudentMap = Record<string, SchaleDBStudent>;
 
 export class SchaleDBStudentRepository {
   /** 전체 학생 목록 (기본 정보) */

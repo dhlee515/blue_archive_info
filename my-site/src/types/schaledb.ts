@@ -175,3 +175,8 @@ export interface SchaleDBConfig {
   /** 모든 학생 공통 선호 태그 — 학생 태그와 합쳐서 매칭 카운트에 단순 합산 */
   CommonFavorItemTags?: string[];
 }
+
+// students / items / equipment.min.json 은 배열이 아닌 id → 데이터 객체 형태 { "10000": {...}, ... }
+export type SchaleDBStudentMap = Record<string, SchaleDBStudent>;
+export type SchaleDBItemMap = Record<string, SchaleDBItem>;
+export type SchaleDBEquipmentMap = Record<string, SchaleDBEquipment>;

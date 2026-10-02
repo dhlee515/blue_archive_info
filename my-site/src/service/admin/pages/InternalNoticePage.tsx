@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import type { Guide, Category } from '@/types/guide';
 import { GuideRepository } from '@/repositories/guideRepository';
 import { InternalCategoryRepository } from '@/repositories/internalCategoryRepository';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore, useIsAdmin } from '@/stores/authStore';
 
 export default function InternalNoticePage() {
   const [guides, setGuides] = useState<Guide[]>([]);
@@ -12,7 +12,7 @@ export default function InternalNoticePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
   const user = useAuthStore((s) => s.user);
-  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function InternalNoticePage() {
           <p className="text-gray-500 dark:text-slate-300 mt-1 text-sm md:text-base">관리자/부관리자 전용 공지사항입니다.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {isAdmin() && (
+          {isAdmin && (
             <>
               <Link
                 to="/admin/deleted-guides"
@@ -136,7 +136,7 @@ export default function InternalNoticePage() {
                 </span>
                 <div className="flex-1" />
                 <div className="flex gap-1 md:gap-1.5" onClick={(e) => e.stopPropagation()}>
-                  {isAdmin() && (
+                  {isAdmin && (
                     <Link
                       to={`/admin/guide-logs/${guide.id}`}
                       className="px-1.5 md:px-2 py-0.5 md:py-1 bg-purple-50 dark:bg-purple-900/40 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 text-xs font-medium rounded transition-colors"

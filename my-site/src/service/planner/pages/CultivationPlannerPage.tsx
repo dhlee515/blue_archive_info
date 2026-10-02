@@ -18,20 +18,15 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useAuthStore } from '@/stores/authStore';
-import { fetchSchaleDB } from '@/lib/schaledbCache';
 import { studentIconUrl } from '@/lib/schaledbImage';
-import type { SchaleDBConfig, SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
 import type { InventoryMap, PlannerStudent, PlannerTargets } from '@/types/planner';
 import { aggregateAllWithBond, computeDeficit } from '../utils/cultivationCalculator';
 import { enrichInventoryWithSyntheticTotals } from '../utils/expConversion';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
+import { EMPTY_GAME_DATA, loadCommonFavorTags, loadPlannerGameData } from '../utils/plannerGameData';
 import AddStudentModal from '../components/AddStudentModal';
 import BackupButtons from '../components/BackupButtons';
 import DeficitPanel from '../components/DeficitPanel';
-
-type StudentsMap = Record<string, SchaleDBStudent>;
-type ItemsMap = Record<string, SchaleDBItem>;
-type EquipmentMap = Record<string, SchaleDBEquipment>;
 
 const DEFAULT_TARGETS: PlannerTargets = {
   level: { current: 1, target: 1 },
@@ -43,9 +38,8 @@ export default function CultivationPlannerPage() {
   const isGuest = !user;
 
   const [plannerStudents, setPlannerStudents] = useState<PlannerStudent[]>([]);
-  const [studentsData, setStudentsData] = useState<StudentsMap>({});
-  const [itemsData, setItemsData] = useState<ItemsMap>({});
-  const [equipmentData, setEquipmentData] = useState<EquipmentMap>({});
+  const [gameData, setGameData] = useState(EMPTY_GAME_DATA);
+  const { students: studentsData, items: itemsData, equipment: equipmentData } = gameData;
   const [inventory, setInventory] = useState<InventoryMap>({});
   const [commonFavorTags, setCommonFavorTags] = useState<readonly string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,19 +50,15 @@ export default function CultivationPlannerPage() {
     let mounted = true;
     (async () => {
       try {
-        const [sd, items, equipment, config, ps, inv] = await Promise.all([
-          fetchSchaleDB<StudentsMap>('students'),
-          fetchSchaleDB<ItemsMap>('items'),
-          fetchSchaleDB<EquipmentMap>('equipment'),
-          fetchSchaleDB<SchaleDBConfig>('config'),
+        const [gd, favorTags, ps, inv] = await Promise.all([
+          loadPlannerGameData(),
+          loadCommonFavorTags(),
           repo.getStudents(),
           repo.getInventory(),
         ]);
         if (!mounted) return;
-        setStudentsData(sd);
-        setItemsData(items);
-        setEquipmentData(equipment);
-        setCommonFavorTags(config.CommonFavorItemTags ?? []);
+        setGameData(gd);
+        setCommonFavorTags(favorTags);
         setPlannerStudents(ps);
         setInventory(inv);
       } catch (e) {

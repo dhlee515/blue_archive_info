@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
+import { canEditRole, isAdminRole } from '@/utils/roles';
 
 interface Props {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ export default function AdminRoute({ children }: Props) {
     return <div className="text-center py-12 text-gray-400 dark:text-slate-400">확인 중...</div>;
   }
 
-  if (user?.role !== 'admin') {
+  if (!isAdminRole(user?.role)) {
     return <Navigate to="/guide" replace />;
   }
 
@@ -30,7 +31,7 @@ export function EditorRoute({ children }: Props) {
     return <div className="text-center py-12 text-gray-400 dark:text-slate-400">확인 중...</div>;
   }
 
-  if (user?.role !== 'admin' && user?.role !== 'editor') {
+  if (!canEditRole(user?.role)) {
     return <Navigate to="/guide" replace />;
   }
 

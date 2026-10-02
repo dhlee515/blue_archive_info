@@ -3,6 +3,7 @@ import type { AuthUser } from '@/types/auth';
 import type { Subscription } from '@supabase/supabase-js';
 import { AuthRepository } from '@/repositories/authRepository';
 import { supabase } from '@/lib/supabase';
+import { canEditRole, isAdminRole } from '@/utils/roles';
 
 interface AuthState {
   user: AuthUser | null;
@@ -12,8 +13,6 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, nickname: string) => Promise<void>;
   signOut: () => Promise<void>;
-  isAdmin: () => boolean;
-  canEdit: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -60,10 +59,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await AuthRepository.signOut();
     set({ user: null });
   },
-
-  isAdmin: () => get().user?.role === 'admin',
-  canEdit: () => {
-    const role = get().user?.role;
-    return role === 'admin' || role === 'editor';
-  },
 }));
+
+/** 역할이 바뀌면 리렌더되도록 boolean 을 직접 구독 */
+export const useIsAdmin = () => useAuthStore((s) => isAdminRole(s.user?.role));
+export const useCanEdit = () => useAuthStore((s) => canEditRole(s.user?.role));

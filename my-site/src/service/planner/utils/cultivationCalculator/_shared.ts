@@ -1,10 +1,10 @@
 // cultivationCalculator 내부 공통 helper — 모든 domain 이 사용.
 
-import type { SchaleDBEquipment } from '@/types/schaledb';
+import type { SchaleDBEquipmentMap } from '@/types/schaledb';
 import type { RequiredMaterials } from '@/types/planner';
 
 /** 일반 장비 id → 장비 데이터 맵 (equipment.min.json 은 Record 형태) */
-export type EquipmentMap = Record<string, SchaleDBEquipment>;
+export type EquipmentMap = SchaleDBEquipmentMap;
 
 /** RequiredMaterials 에 수량을 더하는 헬퍼 */
 export function addTo(out: RequiredMaterials, key: string, qty: number): void {

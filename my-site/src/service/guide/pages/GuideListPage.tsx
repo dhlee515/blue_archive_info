@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import type { Guide, Category } from '@/types/guide';
 import { GuideRepository } from '@/repositories/guideRepository';
 import { CategoryRepository } from '@/repositories/categoryRepository';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore, useCanEdit, useIsAdmin } from '@/stores/authStore';
 
 export default function GuideListPage() {
   const [guides, setGuides] = useState<Guide[]>([]);
@@ -12,8 +12,8 @@ export default function GuideListPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
   const user = useAuthStore((s) => s.user);
-  const canEdit = useAuthStore((s) => s.canEdit);
-  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const canEdit = useCanEdit();
+  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function GuideListPage() {
           <p className="text-gray-500 dark:text-slate-300 mt-1 text-sm md:text-base">블루아카이브 공략과 정보를 확인하세요.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {isAdmin() && (
+          {isAdmin && (
             <>
               <Link
                 to="/admin/deleted-guides"
@@ -60,7 +60,7 @@ export default function GuideListPage() {
               </Link>
             </>
           )}
-          {canEdit() && (
+          {canEdit && (
             <Link
               to={`/guide/new${selectedCategoryId !== 'all' ? `?category=${selectedCategoryId}` : ''}`}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors text-xs md:text-sm"
@@ -141,9 +141,9 @@ export default function GuideListPage() {
                   {new Date(guide.createdAt).toLocaleDateString('ko-KR')}
                 </span>
                 <div className="flex-1" />
-                {canEdit() && (
+                {canEdit && (
                   <div className="flex gap-1 md:gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    {isAdmin() && (
+                    {isAdmin && (
                       <Link
                         to={`/admin/guide-logs/${guide.id}`}
                         className="px-1.5 md:px-2 py-0.5 md:py-1 bg-purple-50 dark:bg-purple-900/40 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 text-xs font-medium rounded transition-colors"

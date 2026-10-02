@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router';
 import type { Guide, Category } from '@/types/guide';
 import { GuideRepository } from '@/repositories/guideRepository';
 import { CategoryRepository } from '@/repositories/categoryRepository';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore, useCanEdit } from '@/stores/authStore';
+import { canEditRole } from '@/utils/roles';
 import DOMPurify from 'dompurify';
 import '@/styles/editor.css';
 
@@ -13,7 +14,7 @@ export default function GuideDetailPage() {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
-  const canEdit = useAuthStore((s) => s.canEdit);
+  const canEdit = useCanEdit();
 
   const [guide, setGuide] = useState<Guide | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -36,8 +37,7 @@ export default function GuideDetailPage() {
         ]);
         // 내부 공지는 editor/admin만 접근 가능
         if (guideData.isInternal) {
-          const role = user?.role;
-          if (role !== 'admin' && role !== 'editor') {
+          if (!canEditRole(user?.role)) {
             if (!user) {
               const redirect = encodeURIComponent(location.pathname + location.search);
               navigate(`/login?redirect=${redirect}`, { replace: true });
@@ -135,7 +135,7 @@ export default function GuideDetailPage() {
           />
         </div>
 
-        {canEdit() && (
+        {canEdit && (
           <div className="p-4 md:p-6 border-t border-gray-200 dark:border-slate-700 flex flex-col md:flex-row gap-2 md:gap-3">
             <Link
               to={`/guide/${guide.id}/edit${guide.isInternal ? '?internal=true' : ''}`}

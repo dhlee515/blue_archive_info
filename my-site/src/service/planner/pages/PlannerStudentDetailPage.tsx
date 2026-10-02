@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { fetchSchaleDB } from '@/lib/schaledbCache';
-import type { SchaleDBConfig, SchaleDBEquipment, SchaleDBItem, SchaleDBStudent } from '@/types/schaledb';
+import type { SchaleDBStudent } from '@/types/schaledb';
 import type { InventoryMap, PlannerStudent, PlannerTargets } from '@/types/planner';
 import { aggregateAllWithBond, computeDeficit } from '../utils/cultivationCalculator';
 import { enrichInventoryWithSyntheticTotals } from '../utils/expConversion';
 import { getPlannerRepo } from '../utils/plannerRepoFactory';
+import { EMPTY_GAME_DATA, loadCommonFavorTags, loadPlannerGameData } from '../utils/plannerGameData';
 import StudentCard from '../components/StudentCard';
 import DeficitPanel from '../components/DeficitPanel';
 
@@ -15,19 +15,14 @@ const DEFAULT_TARGETS: PlannerTargets = {
   level: { current: 1, target: 1 },
 };
 
-type StudentsMap = Record<string, SchaleDBStudent>;
-type ItemsMap = Record<string, SchaleDBItem>;
-type EquipmentMap = Record<string, SchaleDBEquipment>;
-
 export default function PlannerStudentDetailPage() {
   const { plannerStudentId } = useParams<{ plannerStudentId: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const repo = useMemo(() => getPlannerRepo(user?.id ?? null), [user?.id]);
 
-  const [studentsData, setStudentsData] = useState<StudentsMap>({});
-  const [itemsData, setItemsData] = useState<ItemsMap>({});
-  const [equipmentData, setEquipmentData] = useState<EquipmentMap>({});
+  const [gameData, setGameData] = useState(EMPTY_GAME_DATA);
+  const { students: studentsData, items: itemsData, equipment: equipmentData } = gameData;
   const [inventory, setInventory] = useState<InventoryMap>({});
   const [commonFavorTags, setCommonFavorTags] = useState<readonly string[]>([]);
   const [plannerStudent, setPlannerStudent] = useState<PlannerStudent | null>(null);
@@ -41,19 +36,15 @@ export default function PlannerStudentDetailPage() {
     let mounted = true;
     (async () => {
       try {
-        const [sd, items, equipment, config, list, inv] = await Promise.all([
-          fetchSchaleDB<StudentsMap>('students'),
-          fetchSchaleDB<ItemsMap>('items'),
-          fetchSchaleDB<EquipmentMap>('equipment'),
-          fetchSchaleDB<SchaleDBConfig>('config'),
+        const [gd, favorTags, list, inv] = await Promise.all([
+          loadPlannerGameData(),
+          loadCommonFavorTags(),
           repo.getStudents(),
           repo.getInventory(),
         ]);
         if (!mounted) return;
-        setStudentsData(sd);
-        setItemsData(items);
-        setEquipmentData(equipment);
-        setCommonFavorTags(config.CommonFavorItemTags ?? []);
+        setGameData(gd);
+        setCommonFavorTags(favorTags);
         setInventory(inv);
         const found = list.find((p) => p.id === plannerStudentId) ?? null;
         setPlannerStudent(found);

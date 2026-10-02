@@ -14,7 +14,6 @@ export default function GuideFormPage() {
   const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
   const user = useAuthStore((s) => s.user);
-  const canEdit = useAuthStore((s) => s.canEdit);
 
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
