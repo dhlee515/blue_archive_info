@@ -83,10 +83,6 @@ export function isLimitedGift(item: SchaleDBItem): boolean {
   return !(item.Craftable?.[REGION] || item.Shop?.[REGION] || item.StageDrop?.[REGION]);
 }
 
-export function isReleased(student: SchaleDBStudent): boolean {
-  return student.IsReleased?.[REGION] ?? true;
-}
-
 function toRow(student: SchaleDBStudent, item: SchaleDBItem, commonTags: readonly string[]): GiftRow {
   const mult = favorMultiplier(student, item, commonTags);
   return { item, mult, expPerItem: (item.ExpValue ?? 0) * mult, limited: isLimitedGift(item) };

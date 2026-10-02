@@ -1,4 +1,6 @@
-// SchaleDB 설정 — URL 상수, 엔드포인트 맵, 캐시 설정
+// SchaleDB 설정 — URL 상수, 엔드포인트 맵, 캐시 설정, 지역 인덱스
+
+import type { SchaleDBStudent } from '@/types/schaledb';
 
 const BASE_URL = 'https://schaledb.com';
 const DATA_LANG = 'kr';
@@ -34,3 +36,8 @@ export type SchaleDBEndpointKey = keyof typeof SCHALEDB_ENDPOINTS;
  * config.min.json 의 `Regions` 순서 (Jp, Global, Cn) 와 동일. 한섭은 Global 에 포함.
  */
 export const SCHALEDB_REGION = { Jp: 0, Global: 1, Cn: 2 } as const;
+
+/** 한섭 (Global) 출시 여부 — 데이터 누락 시 출시로 간주 */
+export function isReleasedInGlobal(student: SchaleDBStudent): boolean {
+  return student.IsReleased?.[SCHALEDB_REGION.Global] ?? true;
+}
