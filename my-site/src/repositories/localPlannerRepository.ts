@@ -7,6 +7,7 @@
 
 import type { InventoryMap, PlannerStudent, PlannerTargets } from '@/types/planner';
 import { AppError } from '@/utils/AppError';
+import { newId } from '@/utils/id';
 import { kvstore } from '@/lib/kvstore';
 
 const STORAGE_KEY = 'planner.local.v1';
@@ -38,11 +39,6 @@ async function writeState(state: LocalState): Promise<void> {
 }
 
 const now = () => new Date().toISOString();
-
-const newId = (): string =>
-  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export class LocalPlannerRepository {
   static async getStudents(): Promise<PlannerStudent[]> {
