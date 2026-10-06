@@ -3,6 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 import { ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { canEditRole, isAdminRole } from '@/utils/roles';
+import { MeetupRepository } from '@/repositories/meetupRepository';
 
 interface Props {
   isOpen: boolean;
@@ -66,6 +67,22 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   const isInternalActive = location.pathname === '/admin/notices' || isInternalContext;
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
+
+  // 일반 회원: 총무인 모임이 있을 때만 '모임 회계' 메뉴 표시 (부관리자 이상은 항상 표시)
+  const [isMeetupTreasurer, setIsMeetupTreasurer] = useState(false);
+  useEffect(() => {
+    if (!user || canEditRole(user.role) || user.role === 'pending') {
+      setIsMeetupTreasurer(false);
+      return;
+    }
+    let cancelled = false;
+    MeetupRepository.hasTreasurerLedger(user.id).then((has) => {
+      if (!cancelled) setIsMeetupTreasurer(has);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(loadOpenGroups);
 
@@ -157,6 +174,21 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                   비밀 노트
                 </Link>
               </>
+            )}
+            {(canEditRole(user.role) || isMeetupTreasurer) && (
+              // 모임 회계: admin 편집 / editor 열람 / 총무는 자기 모임 편집
+              <Link
+                to="/admin/meetups"
+                onClick={onClose}
+                className={`px-4 py-2 rounded-md font-medium transition-colors block ${
+                  location.pathname === '/admin/meetups'
+                    || location.pathname.startsWith('/admin/meetups/')
+                    ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100'
+                }`}
+              >
+                모임 회계
+              </Link>
             )}
             {canEditRole(user.role) && (
               <Link

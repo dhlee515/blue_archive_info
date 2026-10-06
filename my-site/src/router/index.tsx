@@ -26,6 +26,9 @@ import SecretNoteViewPage from '@/service/secretNote/pages/SecretNoteViewPage';
 import SecretNoteManagePage from '@/service/admin/pages/SecretNoteManagePage';
 import SecretNoteFormPage from '@/service/admin/pages/SecretNoteFormPage';
 import DeletedNotesPage from '@/service/admin/pages/DeletedNotesPage';
+import MeetupManagePage from '@/service/admin/pages/MeetupManagePage';
+import MeetupLedgerPage from '@/service/admin/pages/MeetupLedgerPage';
+import MeetupSettlementViewPage from '@/service/meetup/pages/MeetupSettlementViewPage';
 import CultivationPlannerPage from '@/service/planner/pages/CultivationPlannerPage';
 import PlannerStudentDetailPage from '@/service/planner/pages/PlannerStudentDetailPage';
 import InventoryPage from '@/service/planner/pages/InventoryPage';
@@ -75,6 +78,10 @@ export const router = createBrowserRouter([
       {
         path: 'n/:slug',
         element: <SecretNoteViewPage />,
+      },
+      {
+        path: 'm/:slug',
+        element: <MeetupSettlementViewPage />,
       },
       {
         path: 'calculator/eligma',
@@ -167,6 +174,14 @@ export const router = createBrowserRouter([
       {
         path: 'admin/deleted-notes',
         element: <AdminRoute><DeletedNotesPage /></AdminRoute>,
+      },
+      {
+        path: 'admin/meetups',
+        element: <AuthRoute><MeetupManagePage /></AuthRoute>,
+      },
+      {
+        path: 'admin/meetups/:id',
+        element: <AuthRoute><MeetupLedgerPage /></AuthRoute>,
       },
     ],
   },
