@@ -40,7 +40,7 @@ All source code lives under `my-site/src/`.
 ### Key directories
 
 - `router/index.tsx` — Route definitions (all wrapped in `MainLayout`)
-- `service/{feature}/pages/` — Page components per feature domain (home, student, guide, calculator, planner, reroll, secretNote, auth, admin)
+- `service/{feature}/pages/` — Page components per feature domain (home, student, guide, calculator, planner, reroll, secretNote, meetup, auth, admin)
 - `service/{feature}/components/` — Feature-specific components
 - `service/calculator/events/` — Event calculator plugin system: `archetypes/{id}/` (Form + pure calc) registered in `archetypes/index.ts`
 - `service/calculator/utils/` — Pure helpers for calculator pages: `reportCalc.ts`, `bondCalc.ts` (bond rank calculator — reuses planner `bondGifts` / `tables/bondExp`)
@@ -49,7 +49,7 @@ All source code lives under `my-site/src/`.
 - `components/` — Shared: `Header/`, `layouts/MainLayout`, `navigation/Sidebar`, `guards/AdminRoute` (3 guards in one file), `form/NumberInput` (all integer inputs — see Styling), `student/StudentPickerModal` (student search grid — planner add + bond calculator)
 - `repositories/` — Data access layer (Supabase / SchaleDB remote / static JSON / localStorage — see Repositories table)
 - `types/` — Domain types (per-module imports, no barrel)
-- `utils/` — Utility functions (`AppError`, `format.ts`, `contentCodec.ts` (Base64 content), `roles.ts` (`isAdminRole` / `canEditRole`))
+- `utils/` — Utility functions (`AppError`, `format.ts`, `contentCodec.ts` (Base64 content), `roles.ts` (`isAdminRole` / `canEditRole`), `id.ts` (`newId()` — `crypto.randomUUID` with a fallback for non-secure contexts such as phone → LAN-IP dev server))
 - `data/` — Static JSON: `crafting/` (3-stage recipes), `planner/` (exp/skill/potential/weapon cost tables), `events/` (per-event configs, glob-loaded by `eventRepository`), `reroll.{kr,jp}.json`, `weapon_star.json`, `studentAliases.json`
 - `stores/` — Zustand stores (`authStore` is the only one; also exports `useIsAdmin()` / `useCanEdit()` boolean hooks)
 - `lib/` — Infrastructure: `supabase.ts` (client), `supabaseRest.ts` (raw-fetch writes — see Data flow), `schaledb.ts`+`schaledbCache.ts`+`schaledbImage.ts` (remote fetch + TTL cache + stale-while-error; `SCHALEDB_REGION` = region array index `[Jp, Global, Cn]`, KR server = Global, `isReleasedInGlobal()`), `kvstore.ts` (`WebKVStore` ↔ `TauriKVStore`), `runtime.ts` (`isTauri()`), `sync.ts` (planner local↔cloud), `updater.ts` (Tauri auto-update), `ocrMatching.ts` (Korean-aware fuzzy matching)
@@ -91,6 +91,9 @@ All source code lives under `my-site/src/`.
 | `/admin/notes/new` | SecretNoteFormPage | AdminRoute |
 | `/admin/notes/:id/edit` | SecretNoteFormPage | AdminRoute |
 | `/admin/deleted-notes` | DeletedNotesPage | AdminRoute |
+| `/admin/meetups` | MeetupManagePage | AuthRoute (offline meetup ledgers — admin creates/edits all, editor reads all, a ledger's treasurer edits that ledger; RLS decides what each user sees) |
+| `/admin/meetups/:id` | MeetupLedgerPage | AuthRoute (editable for admin + that ledger's treasurer, read-only otherwise) |
+| `/m/:slug` | MeetupSettlementViewPage | — (public settlement snapshot, only when sharing is on) |
 
 ### Role-based access
 
@@ -113,6 +116,7 @@ All source code lives under `my-site/src/`.
 - Guide edits tracked via `guide_logs` table
 - `secret_notes` uses a 12-char random slug (DB trigger) and is only reachable via `/n/:slug`; anon access goes through a `SECURITY DEFINER` RPC so the table itself stays admin-only
 - `secret_notes` supports pluggable content types via `note_type` column (`'free' | 'rules'`). `free` stores Base64 HTML in `content`; `rules` stores a structured JSON in `structured_data`. Each type is encapsulated as a plugin under `service/secretNote/plugins/{type}/` (Editor + Viewer + serialize/deserialize). Adding a new type = create plugin file + one line in `plugins/registry.ts`
+- `meetup_ledgers` (offline meetup accounting; RLS: admin all + editor SELECT + treasurer SELECT/UPDATE on rows where `auth.uid() = any(treasurer_user_ids)`; trigger `meetup_ledgers_guard_bu` blocks non-admins from changing treasurer_user_ids / deleted_at / created_by) stores the whole ledger as one jsonb `data` document (`MeetupLedgerData`, normalized on read); meetup period is two columns `meetup_date` (start) + `meetup_end_date` (null = one day, DB check end ≥ start). For multi-day meetups each participant has an optional attendance window (`attendFrom` / `attendTo`) and each expense a `date`; cover `present` = split among everyone attending that day, re-resolved on every calculation (`expenseSharers`), so `computeSettlement` / `validateLedger` / `buildPublicSnapshot` take the meetup period as an argument. Participants are picked from site members (`MemberPickerModal` → `AuthRepository.getAllUsers()`, admin only): `userId` + nickname copied at add time (suffix ` (2)` on clashes); `userId` never goes into the public snapshot. Participants with `userId: null` are legacy free-text entries. Edit permission = `treasurer_user_ids` (several members, appointed by admin only — `updateLedger` sends it only when the admin passes `treasurerUserIds`); the settlement hub `data.treasurerId` (◉ 정산, receives transfers) must be one of them (`validateLedger(data, period, treasurerUserIds)`). Treasurers are always participants (appointing adds them; their rows can't be deleted until unassigned). Sidebar shows 모임 회계 to editors+ and to members who are treasurer of a live ledger (`MeetupRepository.hasTreasurerLedger`). Every save also writes `public_snapshot` (memo-free, built by `buildPublicSnapshot`); anon reads only that via the `get_meetup_settlement_by_slug` RPC when `share_enabled`. Writes use an `updated_at` optimistic lock (0 rows → re-fetch → `CONFLICT` / `NOT_FOUND`). Settlement math is pure in `service/meetup/utils/meetupSettlement.ts` (integer won; invariant Σ balances + treasury = 0) — see `PLAN_meetup_ledger.md`. Slugs reuse `generate_short_slug()` from the secret_notes migration
 - The same **plugin/registry pattern** is reused by event calculators under `service/calculator/events/archetypes/` — register `{label, Form}` in `archetypes/index.ts` keyed by `EventArchetypeId` (`'point-accumulation' | 'material-exchange' | 'card-matching'`).
 
 ### Repositories
@@ -125,6 +129,7 @@ All source code lives under `my-site/src/`.
 | `categoryRepository` | Supabase | Guide categories |
 | `internalCategoryRepository` | Supabase | Internal notice categories |
 | `secretNoteRepository` | Supabase (SDK + RPC) | Admin-only notes with public slug-based URL (`/n/:slug`). Anon 열람은 `get_secret_note_by_slug` RPC 만 노출 |
+| `meetupRepository` | Supabase (SDK + RPC) | Meetup ledgers (admin write, editor read, per-ledger treasurer write) (`meetup_ledgers`) with optimistic locking, share toggle / slug regeneration (return new `updated_at`), soft delete. Public settlement via `get_meetup_settlement_by_slug` RPC (`/m/:slug`) |
 | `plannerRepository` | Supabase | Cloud cultivation planner: `planner_students` (1:N) + `planner_inventory` (1:1 jsonb). RLS `user_id = auth.uid()` |
 | `localPlannerRepository` | kvstore (localStorage / Tauri store) | Anonymous fallback for the cultivation planner. Same interface as `plannerRepository`, paired via `plannerRepoFactory` |
 | `schaledbStudentRepository` | SchaleDB (remote JSON, cached) | All student/skill data. Translates SchaleDB shape → project types and resolves `<?n>` / `<b:Stat>` skill description tags into Korean |
@@ -143,12 +148,13 @@ All source code lives under `my-site/src/`.
 - `types/schaledb.ts` — Raw SchaleDB shapes (`SchaleDBStudent`, `SchaleDBEquipment`, `SchaleDBItem`, `SchaleDBSkill`, …) — only used inside repositories
 - `types/guide.ts` — Category, Guide, GuideLog, GuideFormData
 - `types/secretNote.ts` — SecretNote, SecretNoteFormData, NoteType, RulesData, RuleSection, RuleItem, RuleBanner, RuleColor, RuleIcon
+- `types/meetup.ts` — MeetupLedger, MeetupLedgerData (feeTiers / participants / expenses / modes), MeetupPublicSnapshot, `TREASURY` sentinel
 - `types/event.ts` — EventArchetypeId, EventConfig (discriminated union: PointEventConfig / ExchangeEventConfig / CardMatchingConfig)
 - `types/planner.ts` — PlannerStudent + PlannerTargets (level/gear/weapon/weaponStar/equipment/skills/potentials/bond), BondRange, InventoryMap, RequiredMaterials, DeficitReport
 - `types/reroll.ts` — RerollCategory, RerollStudent
 - `types/crafting.ts` — CraftingNode, CraftingItem
 - Per-module imports (e.g. `from '@/types/planner'`) — no barrel
-- Custom `AppError` class with error codes in `utils/AppError.ts` (`API_ERROR` / `NOT_FOUND` / `VALIDATION` / `UNAUTHORIZED` / `UNKNOWN`). **Repositories throw only `AppError`** with a Korean message; the original Supabase / REST error is kept in `cause` for logging
+- Custom `AppError` class with error codes in `utils/AppError.ts` (`API_ERROR` / `NOT_FOUND` / `VALIDATION` / `UNAUTHORIZED` / `CONFLICT` / `UNKNOWN`). **Repositories throw only `AppError`** with a Korean message; the original Supabase / REST error is kept in `cause` for logging
 
 ### Environment variables
 

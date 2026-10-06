@@ -4,6 +4,8 @@
 > 결산 결과는 비밀 노트처럼 **슬러그 링크(`/m/:slug`)로 참가자에게 공개**할 수 있다.
 > 작성일: 2026-10-06 · 검증 반영: 2026-10-06 (§9)
 >
+> **상태 (2026-10-06): 구현 완료 · 마이그레이션 up · period · treasurer 적용 확인 (editor_read 는 조회로 확인 불가) · 실제 계정 확인 후 main 병합 · 배포.** 계획과 달라진 점은 §10.
+>
 > 관련 문서: [PLAN_admin_only_board.md](PLAN_admin_only_board.md) (비밀 노트 — admin 전용 RLS + 슬러그 공개 RPC 원형)
 > 관련 파일: [20260418_secret_notes_up.sql](supabase/migrations/20260418_secret_notes_up.sql), [secretNoteRepository.ts](my-site/src/repositories/secretNoteRepository.ts), [SecretNoteViewPage.tsx](my-site/src/service/secretNote/pages/SecretNoteViewPage.tsx), [Sidebar.tsx](my-site/src/components/navigation/Sidebar.tsx)
 
@@ -17,7 +19,7 @@
 | D2 | 저장 위치 | **Supabase** — 관리자끼리 같은 장부 공유 |
 | D3 | 참가자 정보 | **닉네임만** 저장. 연락처 · 계좌번호는 DB 에 남기지 않음 |
 | D4 | 결산 공개 | **슬러그 링크로 공개** (`/m/:slug`, 비밀 노트와 같은 RPC 방식) |
-| D5 | 권한 | **admin 전용** (editor 불가) |
+| D5 | 권한 | ~~admin 전용~~ → **admin 편집 + editor(부관리자) 열람만** (2026-10-06 변경, §10) |
 
 아래는 계획 작성 중 정한 설계 선택. 검증 단계에서 바꿀 수 있다.
 
@@ -139,7 +141,7 @@ export interface MeetupLedgerData {
 |---|---|
 | 닉네임 비어 있지 않음, 장부 안에서 중복 없음 (앞뒤 공백 제거 후 비교) | 송금 목록 · 공개 페이지가 닉네임으로 사람을 구분 |
 | `split` 지출의 분담 대상 ≥ 1명 | 0명이면 그 금액이 계산에서 빠져 §3.4 불변식이 깨짐 |
-| 참가비가 있는 사람이 있거나 결제자가 `treasury` 인 지출이 있으면 **총무 지정 필수** | 총무가 없으면 통장 잔액 `b_T` 를 받을/보낼 사람이 없음 (검증 스크립트에서 20,000원이 남는 사례 확인) |
+| 참가비가 있는 사람이 있거나, 결제자가 `treasury` 이거나, **회비 충당(`cover: fee`) 지출**이 있으면 **총무 지정 필수** | 총무가 없으면 통장 잔액 `b_T` 를 받을/보낼 사람이 없음 (검증 스크립트에서 20,000원이 남는 사례 확인) |
 | `paidBy` / `among` / `feeTierId` / `treasurerId` 가 존재하는 id 를 가리킴 | 삭제 후 남은 참조 방지 |
 | 금액: 참가비 ≥ 0, 지출 > 0, 정수 | `NumberInput` 이 대부분 막지만 저장 직전에 한 번 더 확인 |
 
@@ -450,3 +452,48 @@ supabase.from('meetup_ledgers')
 | # | 문제 | 처리 |
 |---|---|---|
 | 6 | Tauri 앱에서 `window.location.origin` 이 앱 내부 주소라 공개 링크가 잘못 복사됨 (기존 비밀 노트도 동일) | Tauri 앱은 현재 미서비스 → **Tauri 배포 준비 시 비밀 노트와 함께 수정** (§1 "안 하는 것") |
+
+---
+
+## 10. 구현 기록 (2026-10-06)
+
+### 파일
+
+| 파일 | 내용 |
+|---|---|
+| `supabase/migrations/20261006_meetup_ledgers_{up,down}.sql` | §4.1 그대로. up 헤더에 `generate_short_slug()` 의존성 경고 |
+| `types/meetup.ts` | §2.1 + `TREASURY` 상수 + `MeetupSummary` · `MeetupPublicSettlement` |
+| `utils/AppError.ts` · `utils/id.ts` | `CONFLICT` 추가 · `newId()` (`localPlannerRepository` 에서 이동) |
+| `service/meetup/utils/meetupSettlement.ts` | 검증 · 정규화 · 분배 · 정산 · 송금 · 스냅샷 · 공유 문구 |
+| `repositories/meetupRepository.ts` | §6 메서드 전부. 공개 스냅샷은 리포지토리가 저장 시마다 계산 (`createLedger` / `updateLedger`) |
+| `service/meetup/components/SettlementSections.tsx` | `SectionCard` · `SummaryGrid` · `BalanceList` · `TransferList` — 관리 / 공개 화면 공용 |
+| `service/admin/pages/MeetupManagePage.tsx` · `MeetupLedgerPage.tsx` | 관리 화면 |
+| `service/meetup/pages/MeetupSettlementViewPage.tsx` | 공개 화면 (`noindex`) |
+| `router/index.tsx` · `Sidebar.tsx` · `CLAUDE.md` | 라우트 3개 · `모임 회계` (teal) · 문서 |
+
+### 계획과 달라진 점
+
+1. **총무 필수 조건 확장 (§3.0)** — 참가비 · 통장 결제 외에 **회비 충당 지출**도 포함. 참가비 없이 회비 충당 지출만 있고 `총무 부담` 모드면 통장 잔액이 음수인데 받을 사람이 없는 경우가 남아 있었음 (구현 중 발견).
+2. **공개 스냅샷에 `isTreasurer` 추가** — 총무 본인 행이 "참가비 미납 · −40,000" 처럼 보여 오해 소지. 총무 배지 + 금액 대신 "통장에서 정리" 표시.
+3. **요약 카드 열 수를 컨테이너 쿼리로** (`@container` / `@lg:grid-cols-4`) — 관리 화면 오른쪽 좁은 칸(22rem)에서 화면 폭 기준 4열이면 금액이 잘림.
+4. **모바일 하단 바 = 요약 + 저장 버튼** — 인연 계산기처럼 결과가 보이면 숨기는 대신, 저장 버튼이 필요해 항상 표시. 요약을 누르면 결과 칸으로 스크롤.
+5. **입력 오류는 상단 목록 + 해당 행 빨간 테두리** — 저장 버튼 비활성화, 정산 · 송금 영역은 "입력 오류를 먼저 고치세요".
+6. 참가비 구간 삭제 시 그 구간을 쓰던 참가자는 확인 후 `참가비 없음` 으로 자동 변경 (검증 오류로 남기지 않음).
+7. **D5 변경 — 부관리자 열람 허용** (구현 후 요청). 추가 마이그레이션 `20261006_meetup_ledgers_editor_read_{up,down}.sql` — 기존 admin 정책은 두고 editor SELECT 정책만 추가 (permissive 정책 OR). 라우트 `EditorRoute`, 사이드바는 `canEditRole` 블록(내부 공지 위). 목록 화면은 생성 · 삭제 · 삭제된 모임을 admin 만 표시, 장부 화면은 `readOnly` → 입력 fieldset 비활성 · 저장 / 상태 / 공개 토글 / 재발급 숨김, 정산 문구 복사 · 공개 링크 복사는 허용. editor 는 내부 메모도 볼 수 있음. mock 검증: 390px 넘침 없음, 편집 영역 활성 컨트롤 0개, PATCH 요청 0건.
+8. **모임 기간 (시작일 ~ 끝일)** (구현 후 요청). 추가 마이그레이션 `20261006_meetup_ledgers_period_{up,down}.sql` — 기존 `meetup_date` 를 시작일로 유지하고 `meetup_end_date` 컬럼 추가 (null = 하루짜리, check: 끝일은 시작일이 있을 때만 · 시작일 이후), 공개 RPC 는 반환 컬럼이 바뀌어 drop + recreate. 앱: `normalizePeriod` (끝일 = 시작일이면 null), `periodError` (DB 제약과 같은 규칙, 오류 시 생성 · 저장 불가), `formatPeriod` (`2026-10-12 ~ 10-13`, 해가 바뀌면 연도 포함), 정산 문구 머리 `[10/12~10/13 …]`. 검증 스크립트 28개 통과, mock 화면 390 / 1280px 넘침 없음.
+9. **참석 기간 · 지출 날짜 · "그날 참석자" 분담** (구현 후 요청, DB 변경 없음 — 전부 jsonb `data`). 참가자 `attendFrom` / `attendTo` (null = 모임 전체), 지출 `date` (null = 모임 시작일), 충당 방식 `present` 추가 (= 그 날짜 참석자 전원 균등 분담, **계산할 때마다** 참석 기간으로 다시 구함 — 참석 기간을 고치거나 사람을 추가해도 기존 지출이 따라감). 기존 `split` 은 "직접 선택 분담"으로 유지. 회비는 기존 참가비 구간으로 처리 (일수 비례 자동 계산 안 함). 하루짜리 모임이면 입력칸을 숨기고 참석 기간을 무시 (전원 참석). 검증 추가: 참석 기간 · 지출 날짜가 모임 기간 밖, 참석 끝일 < 시작일, 그날 참석자 0명. 공개 스냅샷: 참가자 `attendLabel` (`10-12만` / `10-12 ~ 10-13`), 지출 `date` + 날짜순 정렬. `computeSettlement` / `validateLedger` / `buildPublicSnapshot` 은 모임 기간을 인자로 받음 (리포지토리 저장 시에도 전달). 검증: 1박 2일 수기 예제 · 규칙 · 정규화(기존 데이터 호환) 19개 + 무작위 여러 날 장부 94,562개 통과, mock 390px 화면에서 "모모이 1일차만" 시나리오 송금 1건 (모모이 → 아리스 10,000) 일치. 테스트 난수 생성기를 LCG → mulberry32 로 교체 (LCG 하위 비트 주기 때문에 경우가 고르게 섞이지 않았음 — 교체 후 기존 묶음도 150,326개 통과).
+10. **참가자 = 사이트 회원 선택** (구현 후 요청). 자유 입력(닉네임 붙여넣기)을 없애고 `회원 추가` 모달(`MemberPickerModal`)에서 고름 — 닉네임 검색 · 여러 명 선택 · 이미 추가된 회원 잠금, 삭제된 계정 제외, 승인 대기는 `대기` 배지, 동명이인 구분용 가입일 표시. **게스트(비회원) 입력은 두지 않음** — 가입을 안내. 참가자에 `userId` 추가, 닉네임은 추가 시점 값을 복사 (결산 기록이므로 이후 닉네임 변경을 따라가지 않음, 회원 이름칸은 잠금), 장부 안에서 닉네임이 겹치면 ` (2)` 접미사 (회원가입이 닉네임 중복을 막지 않음). 검증: 같은 회원 중복 추가 → 오류. 기존 데이터(`userId` 없음)는 `비회원` 배지 + 이름 수정 가능으로 유지. 공개 스냅샷에는 `userId` 미포함. DB 변경 없음. mock 390px: 목록 정렬 · 대기 배지 · `아리스 (2)` · 재오픈 시 3명 잠금 · 넘침 없음.
+11. **모임별 총무(여러 명)에게 편집 권한** (구현 후 요청, 이어서 "총무 복수 임명" 요청 반영 — SQL 실행 전이라 같은 파일을 배열 방식으로 고쳐 씀). 추가 마이그레이션 `20261006_meetup_ledgers_treasurer_{up,down}.sql` — `treasurer_user_ids uuid[]` 컬럼 (GIN 인덱스, `auth.uid() = any(...)` 정책), 총무 SELECT / UPDATE 정책 (승인 대기 제외), 관리자가 아니면 `treasurer_user_id` · `deleted_at` · `created_by` 변경을 막는 트리거 (RLS 는 행 단위라 컬럼을 못 막음). 결정: 총무 권한 = 편집 · 저장 · 정산 완료 처리 · 공개 설정 · 링크 재발급 (삭제 · 복원 · 총무 임명 · 해제는 최고 관리자) / 총무는 여러 명, 송금이 모이는 정산 총무(◉ 정산)는 그중 한 명 (검증 규칙) — 처음엔 "편집 총무 = 정산 총무 한 사람"이었으나 복수 임명으로 "정산 총무 ∈ 총무들"로 바뀜. 총무 목록은 최고 관리자가 저장할 때만 함께 보냄, ◉ 는 편집 권한자가 총무 중에서 고름, 총무는 항상 참가자 (임명 시 자동 추가, 해제 전에는 삭제 불가), 정산 총무가 해제되면 첫 총무로 자동 이동 / 일반 회원은 자기가 총무인 모임이 있을 때만 사이드바 메뉴. 라우트는 `AuthRoute` (보이는 장부는 RLS 가 결정, 남의 장부 주소로 들어가면 "찾을 수 없음"). 모임 생성 시 총무 1명 이상 지정 필수 (`MemberPickerModal treasurers` — 승인 대기 제외, 기존 총무 미리 선택), 총무들이 첫 참가자들 + 첫 총무가 정산 총무. 장부 화면 참가자 영역에 총무 목록 + `총무 변경`(최고 관리자). 기존 장부는 총무 없음 → 최고 관리자만 편집 (◉ 는 아무 참가자나), `총무 변경`으로 임명하면 권한 생김. mock (RLS · 트리거 흉내) 390px: admin 이 총무 2명으로 생성 → 총무 변경(1명 해제 · 1명 추가) → 저장 / 남은 총무 · 새 총무 편집 · 저장 · 공개 / 해제된 회원 메뉴 없음 · 직접 접근 차단 / 부관리자 열람 — 전부 기대대로.
+
+### 검증 결과
+
+| # | 결과 |
+|---|---|
+| V1 · V4 · V5 · V6 · V12 | 실제 모듈을 esbuild 로 번들해 무작위 장부 200,000개 생성 → 검증 통과 23,656개 전부 통과 |
+| V2 · V3 · V11 · V14 | 수기 예제 · 규칙별 케이스 24개 전부 통과 |
+| V7 · V13 | headless Edge + Supabase 응답 mock: 공개 토글 직후 저장 → 충돌 없음, 서버 `updated_at` 변경 후 저장 → 0행 → `CONFLICT` 배너 |
+| V9 | mock: 공개 끄기 → 공개 페이지 "결산을 찾을 수 없습니다" |
+| V10 | 360 / 390 / 1280px 목록 · 편집 · 공개 화면 가로 넘침 없음 |
+| V6 (화면) | 공개 페이지 본문에 내부 메모 문자열 없음 |
+| `type-check` · `build` | 통과 |
+| **남은 것** | 마이그레이션 실행 후 실제 DB 로 V7 · V8 (anon 직접 SELECT 0행) · V9 · V13 재확인 — 사용자 |
