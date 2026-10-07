@@ -108,6 +108,12 @@ export function BalanceList({
                 {r.tierLabel}
               </span>
             )}
+            {r.absentEvents && r.absentEvents.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 break-all">
+                불참 {r.absentEvents.join(', ')}
+              </span>
+            )}
+            {/* 이전 형식 스냅샷 (참석 기간 방식) */}
             {r.attendLabel && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
                 {r.attendLabel} 참석

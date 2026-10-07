@@ -22,13 +22,13 @@ import {
   buildPublicSnapshot,
   buildShareText,
   computeSettlement,
-  expenseDate,
   expenseSharers,
-  isMultiDay,
+  isEvent,
   needsTreasurer,
   normalizePeriod,
   periodError,
   surplusText,
+  toggleAbsent,
   validateLedger,
   won,
 } from '@/service/meetup/utils/meetupSettlement';
@@ -127,17 +127,9 @@ export default function MeetupLedgerPage() {
     return () => clearTimeout(t);
   }, [savedFlash]);
 
-  /** 입력 중인 모임 기간 — 참석 기간 · 지출 날짜 계산 기준 */
-  const mPeriod = useMemo(() => {
-    const n = normalizePeriod(startDate, endDate);
-    return { start: n.meetupDate, end: n.meetupEndDate };
-  }, [startDate, endDate]);
-  const issues = useMemo(() => (data ? validateLedger(data, mPeriod, treasurerIds) : []), [data, mPeriod, treasurerIds]);
-  const result = useMemo(() => (data ? computeSettlement(data, mPeriod) : null), [data, mPeriod]);
-  const snapshot = useMemo(
-    () => (data && result ? buildPublicSnapshot(data, result, mPeriod) : null),
-    [data, result, mPeriod],
-  );
+  const issues = useMemo(() => (data ? validateLedger(data, treasurerIds) : []), [data, treasurerIds]);
+  const result = useMemo(() => (data ? computeSettlement(data) : null), [data]);
+  const snapshot = useMemo(() => (data && result ? buildPublicSnapshot(data, result) : null), [data, result]);
   const issueIds = useMemo(() => new Set(issues.map((i) => i.target?.id).filter(Boolean)), [issues]);
   const treasurerIssue = issues.some((i) => i.target?.kind === 'treasurer');
 
@@ -162,8 +154,8 @@ export default function MeetupLedgerPage() {
   const periodErr = periodError(startDate, endDate);
   const canSave = !saving && issues.length === 0 && title.trim() !== '' && !periodErr;
   const hasTreasurer = !!data.treasurerId;
-  /** 여러 날 모임이면 참석 기간 · 지출 날짜 입력칸 표시 */
-  const multiDay = isMultiDay(mPeriod);
+  /** 참석자끼리 나누는 지출 (고기 1차 · 노래방 2차 …) — 참가자 행에서 참석 칩으로도 보여 준다 */
+  const events = data.expenses.filter(isEvent);
   const pName = (pid: string) => data.participants.find((p) => p.id === pid)?.name.trim() || '(이름 없음)';
 
   const update = (fn: (d: MeetupLedgerData) => MeetupLedgerData) => setData((d) => (d ? fn(d) : d));
@@ -202,10 +194,9 @@ export default function MeetupLedgerPage() {
       feeTierId: defaultTier,
       feePaid: false,
       settledAmount: null,
-      attendFrom: null,
-      attendTo: null,
       memo: '',
     }));
+    // 기존 이벤트에는 자동으로 참석 (빠진 사람만 저장하므로 따로 할 일 없음)
     update((d) => ({ ...d, participants: [...d.participants, ...added] }));
   };
   /** 총무 임명 (최고 관리자). 참가자가 아닌 총무는 참가자로 추가하고, 정산 총무가 총무가 아니게 되면 첫 총무로 바꾼다 */
@@ -236,7 +227,7 @@ export default function MeetupLedgerPage() {
       expenses: d.expenses.map((e) => ({
         ...e,
         paidBy: e.paidBy === pid ? TREASURY : e.paidBy,
-        cover: e.cover.kind === 'split' ? { kind: 'split', among: e.cover.among.filter((x) => x !== pid) } : e.cover,
+        cover: e.cover.kind === 'event' ? { kind: 'event', absent: e.cover.absent.filter((x) => x !== pid) } : e.cover,
       })),
     }));
   };
@@ -248,10 +239,9 @@ export default function MeetupLedgerPage() {
       label: '',
       category: 'etc',
       amount: 0,
-      // 연속 입력 편의: 직전 지출과 같은 날짜
-      date: multiDay ? (data.expenses.at(-1)?.date ?? mPeriod.start) : null,
       paidBy: hasTreasurer ? TREASURY : (data.participants[0]?.id ?? TREASURY),
-      cover: data.feeTiers.length > 0 ? { kind: 'fee' } : { kind: 'present' },
+      // 참석자 분담은 전원 참석으로 시작 — 안 간 사람만 뺀다
+      cover: data.feeTiers.length > 0 ? { kind: 'fee' } : { kind: 'event', absent: [] },
       memo: '',
     };
     update((d) => ({ ...d, expenses: [...d.expenses, expense] }));
@@ -262,13 +252,10 @@ export default function MeetupLedgerPage() {
     if ((e.label.trim() || e.amount > 0) && !confirm(`"${e.label.trim() || '이름 없는 지출'}" 지출을 삭제하시겠습니까?`)) return;
     update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== e.id) }));
   };
-  const toggleAmong = (e: MeetupExpense, pid: string) => {
-    if (e.cover.kind !== 'split') return;
-    const among = e.cover.among.includes(pid)
-      ? e.cover.among.filter((x) => x !== pid)
-      : data.participants.map((p) => p.id).filter((x) => x === pid || (e.cover.kind === 'split' && e.cover.among.includes(x)));
-    updateExpense(e.id, { cover: { kind: 'split', among } });
-  };
+  /** 이벤트 참석 ↔ 불참 (지출 카드 · 참가자 행 어느 쪽에서 눌러도 같음) */
+  const toggleAttend = (eid: string, pid: string) =>
+    update((d) => ({ ...d, expenses: d.expenses.map((x) => (x.id === eid ? toggleAbsent(d, x, pid) : x)) }));
+  const eventName = (e: MeetupExpense) => e.label.trim() || '(이름 없는 지출)';
 
   // ── 정산 완료 체크 (hub 전용) ──
   const toggleSettled = (index: number) => {
@@ -597,29 +584,24 @@ export default function MeetupLedgerPage() {
                   {!isTreasurerRow(p) && (isAdmin || p.id !== data.treasurerId) && (
                     <button type="button" onClick={() => removeParticipant(p.id)} className="p-1.5 text-gray-400 hover:text-red-500" aria-label="참가자 삭제"><Trash2 size={16} /></button>
                   )}
-                  {multiDay && (
+                  {events.length > 0 && (
                     <div className="basis-full flex flex-wrap items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300">
-                      <span className="font-medium">참석</span>
-                      <input
-                        type="date"
-                        value={p.attendFrom ?? ''}
-                        min={mPeriod.start ?? undefined}
-                        max={mPeriod.end ?? undefined}
-                        onChange={(e) => updateParticipant(p.id, { attendFrom: e.target.value || null })}
-                        aria-label="참석 시작일"
-                        className={`${inputCls} text-xs py-1`}
-                      />
-                      <span className="text-gray-400">~</span>
-                      <input
-                        type="date"
-                        value={p.attendTo ?? ''}
-                        min={p.attendFrom ?? mPeriod.start ?? undefined}
-                        max={mPeriod.end ?? undefined}
-                        onChange={(e) => updateParticipant(p.id, { attendTo: e.target.value || null })}
-                        aria-label="참석 끝일"
-                        className={`${inputCls} text-xs py-1`}
-                      />
-                      <span className="text-gray-400 dark:text-slate-500">비우면 모임 전체</span>
+                      <span className="font-medium mr-0.5">참석</span>
+                      {events.map((e) => {
+                        const on = e.cover.kind === 'event' && !e.cover.absent.includes(p.id);
+                        return (
+                          <button
+                            key={e.id}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => toggleAttend(e.id, p.id)}
+                            title={on ? '누르면 불참으로' : '누르면 참석으로'}
+                            className={`px-2 py-0.5 rounded-full border transition-colors ${on ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 line-through'}`}
+                          >
+                            {eventName(e)}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -629,11 +611,13 @@ export default function MeetupLedgerPage() {
 
           {/* 지출 */}
           <SectionCard
-            title={`지출 ${data.expenses.length}건 · ${won(result.summary.totalExpense)}`}
+            title={`지출 · 이벤트 ${data.expenses.length}건 · ${won(result.summary.totalExpense)}`}
             right={<button type="button" onClick={addExpense} className={`${smallBtn} bg-teal-600 hover:bg-teal-700 text-white`}><Plus size={14} />지출</button>}
           >
             {data.expenses.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-slate-400">대관비 · 음식 · 경품 등 지출을 추가하세요.</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400">
+                고기 1차 · 노래방 2차 · 대관비처럼 쓴 돈을 추가하세요. 참석자끼리 나누는 지출은 전원 참석으로 시작하니, 안 간 사람만 빼면 됩니다.
+              </p>
             ) : (
               <div className="flex flex-col gap-3">
                 {data.expenses.map((e) => (
@@ -643,24 +627,13 @@ export default function MeetupLedgerPage() {
                         type="text"
                         value={e.label}
                         onChange={(ev) => updateExpense(e.id, { label: ev.target.value })}
-                        placeholder="항목 (예: 파티룸 대관)"
+                        placeholder="항목 (예: 고기 1차)"
                         className={`${inputCls} flex-1 min-w-0`}
                       />
                       <NumberInput value={e.amount} onChange={(n) => updateExpense(e.id, { amount: n })} zeroAsEmpty placeholder="금액" className={`${inputCls} w-28 text-right tabular-nums`} />
                       <button type="button" onClick={() => removeExpense(e)} className="p-1.5 text-gray-400 hover:text-red-500" aria-label="지출 삭제"><Trash2 size={16} /></button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-slate-300">
-                      {multiDay && (
-                        <input
-                          type="date"
-                          value={expenseDate(e, mPeriod) ?? ''}
-                          min={mPeriod.start ?? undefined}
-                          max={mPeriod.end ?? undefined}
-                          onChange={(ev) => updateExpense(e.id, { date: ev.target.value || null })}
-                          aria-label="사용 날짜"
-                          className={inputCls}
-                        />
-                      )}
                       <select value={e.category} onChange={(ev) => updateExpense(e.id, { category: ev.target.value as MeetupExpenseCategory })} className={inputCls}>
                         {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                       </select>
@@ -676,57 +649,47 @@ export default function MeetupLedgerPage() {
                         <select
                           value={e.cover.kind}
                           onChange={(ev) =>
-                            updateExpense(e.id, {
-                              cover: ev.target.value === 'fee'
-                                ? { kind: 'fee' }
-                                : ev.target.value === 'present'
-                                  ? { kind: 'present' }
-                                  // 직접 선택은 지금 분담 대상(그날 참석자)에서 시작
-                                  : { kind: 'split', among: expenseSharers(data, mPeriod, { ...e, cover: { kind: 'present' } }) },
-                            })
+                            updateExpense(e.id, { cover: ev.target.value === 'fee' ? { kind: 'fee' } : { kind: 'event', absent: [] } })
                           }
                           className={inputCls}
                         >
+                          <option value="event">참석자끼리 분담</option>
                           <option value="fee">회비에서</option>
-                          <option value="present">{multiDay ? '그날 참석자 분담' : '전원 분담'}</option>
-                          <option value="split">직접 선택 분담</option>
                         </select>
                       </label>
                     </div>
-                    {e.cover.kind === 'present' && (
-                      <p className="text-xs text-gray-500 dark:text-slate-400">
-                        분담 {expenseSharers(data, mPeriod, e).length}명
-                        {expenseSharers(data, mPeriod, e).length > 0 && <>: {expenseSharers(data, mPeriod, e).map(pName).join(' · ')}</>}
-                        {multiDay && <span className="text-gray-400 dark:text-slate-500"> (참석 기간을 바꾸면 자동으로 다시 계산)</span>}
-                      </p>
-                    )}
-                    {e.cover.kind === 'split' && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-xs text-gray-500 dark:text-slate-400 mr-1">
-                          분담 {e.cover.among.length}/{data.participants.length}명
-                        </span>
-                        <button type="button" onClick={() => updateExpense(e.id, { cover: { kind: 'split', among: data.participants.map((p) => p.id) } })} className="text-xs text-teal-700 dark:text-teal-300 hover:underline">전원</button>
-                        <button type="button" onClick={() => updateExpense(e.id, { cover: { kind: 'split', among: [] } })} className="text-xs text-gray-500 dark:text-slate-400 hover:underline mr-1">해제</button>
-                        {data.participants.map((p) => {
-                          const on = e.cover.kind === 'split' && e.cover.among.includes(p.id);
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              aria-pressed={on}
-                              onClick={() => toggleAmong(e, p.id)}
-                              className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
-                                on
-                                  ? 'bg-teal-600 border-teal-600 text-white'
-                                  : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-500 dark:text-slate-400'
-                              }`}
-                            >
-                              {p.name.trim() || '(이름 없음)'}
+                    {e.cover.kind === 'event' && (() => {
+                      const n = expenseSharers(data, e).length;
+                      const absent = e.cover.absent;
+                      return (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-xs text-gray-500 dark:text-slate-400 mr-1 tabular-nums">
+                            참석 {n}/{data.participants.length}명
+                            {n > 0 && e.amount > 0 && <> · 1인 {e.amount % n === 0 ? '' : '약 '}{won(Math.floor(e.amount / n))}</>}
+                          </span>
+                          {absent.length > 0 && (
+                            <button type="button" onClick={() => updateExpense(e.id, { cover: { kind: 'event', absent: [] } })} className="text-xs text-teal-700 dark:text-teal-300 hover:underline mr-1">
+                              전원 참석
                             </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                          )}
+                          {data.participants.map((p) => {
+                            const on = !absent.includes(p.id);
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => toggleAttend(e.id, p.id)}
+                                title={on ? '누르면 불참으로' : '누르면 참석으로'}
+                                className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${on ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 line-through'}`}
+                              >
+                                {p.name.trim() || '(이름 없음)'}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                     <input
                       type="text"
                       value={e.memo}

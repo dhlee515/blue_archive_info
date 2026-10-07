@@ -121,7 +121,6 @@ export class MeetupRepository {
     treasurerUserIds: string[],
     userId: string,
   ): Promise<MeetupLedger> {
-    const period = { start: meetupDate, end: meetupEndDate };
     const { data: row, error } = await supabase
       .from(TABLE)
       .insert({
@@ -130,7 +129,7 @@ export class MeetupRepository {
         meetup_end_date: meetupEndDate,
         data,
         treasurer_user_ids: treasurerUserIds,
-        public_snapshot: buildPublicSnapshot(data, computeSettlement(data, period), period),
+        public_snapshot: buildPublicSnapshot(data, computeSettlement(data)),
         created_by: userId,
       })
       .select()
@@ -143,7 +142,6 @@ export class MeetupRepository {
 
   /** 장부 저장. 공개 스냅샷은 공개 여부와 무관하게 항상 함께 갱신 */
   static async updateLedger(id: string, update: MeetupLedgerUpdate, loadedUpdatedAt: string): Promise<MeetupLedger> {
-    const period = { start: update.meetupDate, end: update.meetupEndDate };
     const row = await MeetupRepository.lockedUpdate(
       id,
       {
@@ -154,7 +152,7 @@ export class MeetupRepository {
         data: update.data,
         // 총무 목록은 넘긴 경우에만 갱신 (최고 관리자). 비관리자가 바꾸면 DB 트리거 meetup_ledgers_guard_bu 가 거부
         ...(update.treasurerUserIds ? { treasurer_user_ids: update.treasurerUserIds } : {}),
-        public_snapshot: buildPublicSnapshot(update.data, computeSettlement(update.data, period), period),
+        public_snapshot: buildPublicSnapshot(update.data, computeSettlement(update.data)),
       },
       loadedUpdatedAt,
       '*',
@@ -256,7 +254,11 @@ export class MeetupRepository {
       meetupEndDate: (row.meetup_end_date as string | null) ?? null,
       status: row.status as MeetupLedgerStatus,
       shareEnabled: row.share_enabled as boolean,
-      data: normalizeLedgerData(row.data),
+      // 기간은 이전 형식(참석 기간 방식) 분담을 이벤트 방식으로 바꿀 때만 쓰임
+      data: normalizeLedgerData(row.data, {
+        start: (row.meetup_date as string | null) ?? null,
+        end: (row.meetup_end_date as string | null) ?? null,
+      }),
       treasurerUserIds: (row.treasurer_user_ids as string[] | null) ?? [],
       createdBy: row.created_by as string,
       createdAt: row.created_at as string,

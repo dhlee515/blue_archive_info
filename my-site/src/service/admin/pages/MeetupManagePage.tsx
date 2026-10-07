@@ -17,7 +17,7 @@ import {
 } from '@/service/meetup/utils/meetupSettlement';
 
 function ledgerSubtitle(ledger: MeetupLedger): string {
-  const { summary } = computeSettlement(ledger.data, { start: ledger.meetupDate, end: ledger.meetupEndDate });
+  const { summary } = computeSettlement(ledger.data);
   // 총무 = 편집 권한 회원들 (참가자로 들어가 있으므로 이름은 참가자 목록에서)
   const names = ledger.data.participants.filter((p) => p.userId && ledger.treasurerUserIds.includes(p.userId)).map((p) => p.name);
   const parts = [`총무 ${names.length > 0 ? names.join(', ') : '미지정'}`, `참가자 ${ledger.data.participants.length}명`];
@@ -95,8 +95,6 @@ export default function MeetupManagePage() {
           feeTierId: null,
           feePaid: false,
           settledAmount: null,
-          attendFrom: null,
-          attendTo: null,
           memo: '',
         };
       });

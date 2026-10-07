@@ -7,6 +7,7 @@ import {
   TREASURY,
   type MeetupExpense,
   type MeetupExpenseCategory,
+  type MeetupExpenseCover,
   type MeetupLedgerData,
   type MeetupParticipant,
   type MeetupPeriod,
@@ -45,13 +46,19 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const str = (v: unknown, fb = ''): string => (typeof v === 'string' ? v : fb);
 const int = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.trunc(v)) : 0);
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+const strs = (v: unknown): string[] => arr(v).filter((x): x is string => typeof x === 'string');
 const oneOf = <T extends string>(v: unknown, options: readonly T[], fb: T): T =>
   options.includes(v as T) ? (v as T) : fb;
 const dateOrNull = (v: unknown): string | null =>
   typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 
-/** DB 의 jsonb `data` (새 행은 `{}`) → 빠진 필드를 기본값으로 채운 장부 */
-export function normalizeLedgerData(raw: unknown): MeetupLedgerData {
+/**
+ * DB 의 jsonb `data` (새 행은 `{}`) → 빠진 필드를 기본값으로 채운 장부.
+ * 이전 형식(참석 기간 방식)의 분담은 여기서 이벤트 방식으로 바꾼다 — `period` 는 그 변환에만 쓴다:
+ * - split (고른 사람끼리) → 고르지 않은 사람 = 불참
+ * - present (그날 참석자) → 지출 날짜에 참석 기간 밖인 사람 = 불참 (하루짜리 모임이면 전원 참석)
+ */
+export function normalizeLedgerData(raw: unknown, period: MeetupPeriod = { start: null, end: null }): MeetupLedgerData {
   const base = emptyLedgerData();
   if (!isObj(raw)) return base;
 
@@ -60,30 +67,48 @@ export function normalizeLedgerData(raw: unknown): MeetupLedgerData {
     label: str(t.label),
     amount: int(t.amount),
   }));
-  const participants: MeetupParticipant[] = arr(raw.participants).filter(isObj).map((p) => ({
+  const rawParticipants = arr(raw.participants).filter(isObj);
+  const participants: MeetupParticipant[] = rawParticipants.map((p) => ({
     id: str(p.id),
     userId: typeof p.userId === 'string' ? p.userId : null,
     name: str(p.name),
     feeTierId: typeof p.feeTierId === 'string' ? p.feeTierId : null,
     feePaid: p.feePaid === true,
     settledAmount: typeof p.settledAmount === 'number' && Number.isFinite(p.settledAmount) ? Math.trunc(p.settledAmount) : null,
-    attendFrom: dateOrNull(p.attendFrom),
-    attendTo: dateOrNull(p.attendTo),
     memo: str(p.memo),
   }));
+  const pIds = participants.map((p) => p.id);
+  const multiDay = !!period.start && !!period.end && period.end > period.start;
+
   const expenses: MeetupExpense[] = arr(raw.expenses).filter(isObj).map((e) => {
-    const kind = isObj(e.cover) ? e.cover.kind : undefined;
-    const cover: MeetupExpense['cover'] = kind === 'split' && isObj(e.cover)
-      ? { kind: 'split', among: arr(e.cover.among).filter((x): x is string => typeof x === 'string') }
-      : kind === 'present'
-        ? { kind: 'present' }
-        : { kind: 'fee' };
+    const c = isObj(e.cover) ? e.cover : {};
+    let cover: MeetupExpenseCover;
+    if (c.kind === 'event') {
+      const absent = new Set(strs(c.absent));
+      cover = { kind: 'event', absent: pIds.filter((id) => absent.has(id)) };
+    } else if (c.kind === 'split') {
+      const among = new Set(strs(c.among));
+      cover = { kind: 'event', absent: pIds.filter((id) => !among.has(id)) };
+    } else if (c.kind === 'present') {
+      const date = dateOrNull(e.date) ?? period.start;
+      const absent = multiDay && date
+        ? rawParticipants
+          .filter((p) => {
+            const from = dateOrNull(p.attendFrom) ?? (period.start as string);
+            const to = dateOrNull(p.attendTo) ?? (period.end as string);
+            return date < from || to < date;
+          })
+          .map((p) => str(p.id))
+        : [];
+      cover = { kind: 'event', absent };
+    } else {
+      cover = { kind: 'fee' };
+    }
     return {
       id: str(e.id),
       label: str(e.label),
       category: oneOf(e.category, EXPENSE_CATEGORIES, 'etc'),
       amount: int(e.amount),
-      date: dateOrNull(e.date),
       paidBy: str(e.paidBy, TREASURY),
       cover,
       memo: str(e.memo),
@@ -109,51 +134,30 @@ export function feeOf(data: MeetupLedgerData, p: MeetupParticipant): number {
   return data.feeTiers.find((t) => t.id === p.feeTierId)?.amount ?? 0;
 }
 
-// ── 참석 기간 · 그날 참석자 ─────────────────────────────────
-
-export const NO_PERIOD: MeetupPeriod = { start: null, end: null };
-
-/** 여러 날 모임인지 — 참석 기간 · 지출 날짜는 이때만 의미가 있다 (하루짜리면 전원 참석으로 취급) */
-export function isMultiDay(period: MeetupPeriod): boolean {
-  return !!period.start && !!period.end && period.end > period.start;
-}
-
-/** 참가자의 실제 참석 구간 [from, to] (비어 있으면 모임 기간 전체). 하루짜리 모임이면 null */
-export function attendWindow(p: MeetupParticipant, period: MeetupPeriod): { from: string; to: string } | null {
-  if (!isMultiDay(period)) return null;
-  return { from: p.attendFrom ?? (period.start as string), to: p.attendTo ?? (period.end as string) };
-}
-
-/** 지출 날짜 (비어 있으면 모임 시작일) */
-export function expenseDate(e: MeetupExpense, period: MeetupPeriod): string | null {
-  return e.date ?? period.start;
-}
-
-/** 해당 날짜에 참석한 참가자 id (목록 순서). 하루짜리 모임이면 전원 */
-export function presentOn(data: MeetupLedgerData, period: MeetupPeriod, date: string | null): string[] {
-  if (!isMultiDay(period) || !date) return data.participants.map((p) => p.id);
-  return data.participants
-    .filter((p) => {
-      const w = attendWindow(p, period) as { from: string; to: string };
-      return w.from <= date && date <= w.to;
-    })
-    .map((p) => p.id);
-}
-
-/** 지출을 나눠 낼 참가자 id — fee 는 빈 배열 (회비에서 충당) */
-export function expenseSharers(data: MeetupLedgerData, period: MeetupPeriod, e: MeetupExpense): string[] {
+/** 지출을 나눠 낼 참가자 id (목록 순서) — fee 는 빈 배열 (회비에서 충당), event 는 불참자를 뺀 전원 */
+export function expenseSharers(data: MeetupLedgerData, e: MeetupExpense): string[] {
   if (e.cover.kind === 'fee') return [];
-  if (e.cover.kind === 'present') return presentOn(data, period, expenseDate(e, period));
-  const pIds = new Set(data.participants.map((p) => p.id));
-  return e.cover.among.filter((id) => pIds.has(id));
+  const absent = new Set(e.cover.absent);
+  return data.participants.filter((p) => !absent.has(p.id)).map((p) => p.id);
 }
 
-/** 표시용 참석 기간 — 전체 기간 참석이면 null */
-export function attendLabel(p: MeetupParticipant, period: MeetupPeriod): string | null {
-  const w = attendWindow(p, period);
-  if (!w || (w.from === period.start && w.to === period.end)) return null;
-  const md = (d: string) => d.slice(5);
-  return w.from === w.to ? `${md(w.from)}만` : `${md(w.from)} ~ ${md(w.to)}`;
+/** 참석자끼리 나누는 지출(이벤트)인지 */
+export const isEvent = (e: MeetupExpense): boolean => e.cover.kind === 'event';
+
+/** 이 참가자가 빠진 이벤트 이름 (입력 순서) */
+export function absentEventsOf(data: MeetupLedgerData, pid: string): string[] {
+  return data.expenses
+    .filter((e) => e.cover.kind === 'event' && e.cover.absent.includes(pid))
+    .map((e, k) => e.label.trim() || `이벤트 ${k + 1}`);
+}
+
+/** 이벤트 참석 토글 — 빠진 사람 목록에 넣거나 뺀다 (목록 순서 유지) */
+export function toggleAbsent(data: MeetupLedgerData, e: MeetupExpense, pid: string): MeetupExpense {
+  if (e.cover.kind !== 'event') return e;
+  const absent = new Set(e.cover.absent);
+  if (absent.has(pid)) absent.delete(pid);
+  else absent.add(pid);
+  return { ...e, cover: { kind: 'event', absent: data.participants.map((p) => p.id).filter((id) => absent.has(id)) } };
 }
 
 /** 모임 통장(총무)이 관여하는 장부인지 — 참가비 / 통장 결제 / 회비 충당 지출 중 하나라도 있으면 총무 필수 */
@@ -180,14 +184,8 @@ export interface LedgerIssue {
 /**
  * @param treasurerUserIds 편집 권한 총무들 — 비어 있지 않으면 정산 총무(◉)는 이 중 한 명이어야 한다
  */
-export function validateLedger(
-  data: MeetupLedgerData,
-  period: MeetupPeriod = NO_PERIOD,
-  treasurerUserIds: string[] = [],
-): LedgerIssue[] {
+export function validateLedger(data: MeetupLedgerData, treasurerUserIds: string[] = []): LedgerIssue[] {
   const issues: LedgerIssue[] = [];
-  const multiDay = isMultiDay(period);
-  const inPeriod = (d: string) => multiDay && (period.start as string) <= d && d <= (period.end as string);
   const pIds = new Set(data.participants.map((p) => p.id));
   const tierIds = new Set(data.feeTiers.map((t) => t.id));
 
@@ -216,14 +214,6 @@ export function validateLedger(
     if (p.feeTierId && !tierIds.has(p.feeTierId)) {
       issues.push({ message: `${name}: 참가비 구간이 삭제되었습니다. 다시 선택하세요.`, target: { kind: 'participant', id: p.id } });
     }
-    if (multiDay) {
-      if ((p.attendFrom && !inPeriod(p.attendFrom)) || (p.attendTo && !inPeriod(p.attendTo))) {
-        issues.push({ message: `${name}: 참석 기간이 모임 기간 밖입니다.`, target: { kind: 'participant', id: p.id } });
-      } else {
-        const w = attendWindow(p, period) as { from: string; to: string };
-        if (w.from > w.to) issues.push({ message: `${name}: 참석 끝일이 참석 시작일보다 빠릅니다.`, target: { kind: 'participant', id: p.id } });
-      }
-    }
   });
 
   data.expenses.forEach((e, i) => {
@@ -233,21 +223,8 @@ export function validateLedger(
     if (e.paidBy !== TREASURY && !pIds.has(e.paidBy)) {
       issues.push({ message: `${name}: 결제자가 삭제되었습니다. 다시 선택하세요.`, target: { kind: 'expense', id: e.id } });
     }
-    if (multiDay && e.date && !inPeriod(e.date)) {
-      issues.push({ message: `${name}: 사용 날짜가 모임 기간 밖입니다.`, target: { kind: 'expense', id: e.id } });
-    } else if (e.cover.kind === 'present' && expenseSharers(data, period, e).length === 0) {
-      issues.push({
-        message: multiDay ? `${name}: 그날 참석한 참가자가 없습니다.` : `${name}: 분담할 참가자가 없습니다.`,
-        target: { kind: 'expense', id: e.id },
-      });
-    }
-    if (e.cover.kind === 'split') {
-      const valid = e.cover.among.filter((id) => pIds.has(id));
-      if (valid.length === 0) {
-        issues.push({ message: `${name}: 분담할 참가자를 1명 이상 선택하세요.`, target: { kind: 'expense', id: e.id } });
-      } else if (valid.length !== e.cover.among.length) {
-        issues.push({ message: `${name}: 분담 대상에 삭제된 참가자가 있습니다.`, target: { kind: 'expense', id: e.id } });
-      }
+    if (e.cover.kind === 'event' && expenseSharers(data, e).length === 0) {
+      issues.push({ message: `${name}: 참석자가 없습니다. 1명 이상 참석으로 두세요.`, target: { kind: 'expense', id: e.id } });
     }
   });
 
@@ -339,7 +316,7 @@ export interface SettlementResult {
   ignoredSettled: boolean;
 }
 
-export function computeSettlement(data: MeetupLedgerData, period: MeetupPeriod = NO_PERIOD): SettlementResult {
+export function computeSettlement(data: MeetupLedgerData): SettlementResult {
   const ps = data.participants;
   const ids = ps.map((p) => p.id);
   const fees = ps.map((p) => feeOf(data, p));
@@ -366,7 +343,7 @@ export function computeSettlement(data: MeetupLedgerData, period: MeetupPeriod =
   // 분담 몫
   const share = new Map<string, number>();
   for (const e of data.expenses) {
-    for (const [id, v] of splitEven(e.amount, expenseSharers(data, period, e))) share.set(id, (share.get(id) ?? 0) + v);
+    for (const [id, v] of splitEven(e.amount, expenseSharers(data, e))) share.set(id, (share.get(id) ?? 0) + v);
   }
   const paidExpense = new Map<string, number>();
   for (const e of data.expenses) {
@@ -481,42 +458,33 @@ export function nodeName(data: MeetupLedgerData, key: string): string {
   return data.participants.find((p) => p.id === key)?.name.trim() ?? '(삭제됨)';
 }
 
-export function coverLabel(data: MeetupLedgerData, period: MeetupPeriod, e: MeetupExpense): string {
+export function coverLabel(data: MeetupLedgerData, e: MeetupExpense): string {
   if (e.cover.kind === 'fee') return '회비';
-  const n = expenseSharers(data, period, e).length;
-  if (e.cover.kind === 'present') return isMultiDay(period) ? `그날 참석자 분담 (${n}명)` : `전원 분담 (${n}명)`;
-  return n === data.participants.length ? `전원 분담 (${n}명)` : `${n}명 분담`;
+  const n = expenseSharers(data, e).length;
+  if (e.cover.absent.length === 0) return `전원 분담 (${n}명)`;
+  const absent = e.cover.absent.map((id) => nodeName(data, id));
+  return absent.length <= 3 ? `${n}명 분담 · 불참 ${absent.join(', ')}` : `${n}명 분담 · 불참 ${absent.length}명`;
 }
 
-export function buildPublicSnapshot(
-  data: MeetupLedgerData,
-  result: SettlementResult,
-  period: MeetupPeriod = NO_PERIOD,
-): MeetupPublicSnapshot {
+export function buildPublicSnapshot(data: MeetupLedgerData, result: SettlementResult): MeetupPublicSnapshot {
   const treasurer = data.participants.find((p) => p.id === data.treasurerId);
-  const multiDay = isMultiDay(period);
-  // 날짜순 (같은 날은 입력 순서 유지 — sort 는 안정 정렬)
-  const expenses = multiDay
-    ? [...data.expenses].sort((a, b) => (expenseDate(a, period) ?? '').localeCompare(expenseDate(b, period) ?? ''))
-    : data.expenses;
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
     treasurerName: treasurer ? treasurer.name.trim() : null,
     transferMode: result.transferMode,
     summary: result.summary,
-    expenses: expenses.map((e) => ({
-      date: multiDay ? expenseDate(e, period) : null,
+    expenses: data.expenses.map((e) => ({
       label: e.label.trim(),
       category: e.category,
       amount: e.amount,
       payerName: e.paidBy === TREASURY ? '모임 통장' : nodeName(data, e.paidBy),
-      coverLabel: coverLabel(data, period, e),
+      coverLabel: coverLabel(data, e),
     })),
-    participants: result.rows.map((r, k) => ({
+    participants: result.rows.map((r) => ({
       name: r.name,
       tierLabel: r.tierLabel,
-      attendLabel: attendLabel(data.participants[k], period),
+      absentEvents: absentEventsOf(data, r.id),
       owed: r.owed,
       paid: r.paid,
       balance: r.balance,

@@ -20,10 +20,6 @@ export interface MeetupParticipant {
   feePaid: boolean;
   /** 정산 완료 체크 시점의 순잔액 (null = 미완료). 현재 순잔액과 다르면 그 차이가 추가로 주고받을 차액 */
   settledAmount: number | null;
-  /** 참석 시작일 YYYY-MM-DD (null = 모임 시작일부터). 여러 날 모임에서만 의미 있음 */
-  attendFrom: string | null;
-  /** 참석 끝일 YYYY-MM-DD (null = 모임 끝일까지) */
-  attendTo: string | null;
   /** 내부 메모 — 공개 스냅샷 제외 */
   memo: string;
 }
@@ -33,13 +29,12 @@ export type MeetupExpenseCategory = 'venue' | 'food' | 'goods' | 'transport' | '
 /**
  * 지출 충당 방식
  * - fee: 회비에서 충당
- * - present: 지출 날짜에 참석한 사람 전원 균등 분담 (계산할 때마다 참석 기간으로 다시 구함)
- * - split: 직접 고른 참가자 균등 분담
+ * - event: 이 지출(이벤트 — 예: 고기 1차)에 참석한 사람끼리 균등 분담.
+ *   빠진 사람만 저장하므로 기본은 전원 참석이고, 나중에 추가한 참가자도 참석으로 잡힌다
  */
 export type MeetupExpenseCover =
   | { kind: 'fee' }
-  | { kind: 'present' }
-  | { kind: 'split'; among: string[] };
+  | { kind: 'event'; absent: string[] };
 
 /** 결제자: 모임 통장(총무) 또는 participant id */
 export const TREASURY = 'treasury';
@@ -50,8 +45,6 @@ export interface MeetupExpense {
   category: MeetupExpenseCategory;
   /** 원, 정수 > 0 */
   amount: number;
-  /** 사용 날짜 YYYY-MM-DD (null = 모임 시작일). 여러 날 모임에서 `present` 분담 대상을 정함 */
-  date: string | null;
   /** TREASURY 또는 participant id */
   paidBy: string;
   cover: MeetupExpenseCover;
@@ -122,10 +115,9 @@ export interface MeetupPublicSnapshot {
   treasurerName: string | null;
   transferMode: MeetupTransferMode;
   summary: MeetupSummary;
-  /** 날짜순 정렬 */
   expenses: {
-    /** 여러 날 모임일 때만 */
-    date: string | null;
+    /** 이전 형식 스냅샷 (참석 기간 방식) 에만 있음 */
+    date?: string | null;
     label: string;
     category: MeetupExpenseCategory;
     amount: number;
@@ -135,8 +127,10 @@ export interface MeetupPublicSnapshot {
   participants: {
     name: string;
     tierLabel: string | null;
-    /** 일부 기간만 참석한 경우 표시용 (예: '10-12 ~ 10-12') */
-    attendLabel: string | null;
+    /** 빠진 이벤트 이름 (전부 참석이면 빈 배열). 이전 형식 스냅샷에는 없음 */
+    absentEvents?: string[];
+    /** 이전 형식 스냅샷 (참석 기간 방식) 에만 있음 */
+    attendLabel?: string | null;
     owed: number;
     paid: number;
     balance: number;
