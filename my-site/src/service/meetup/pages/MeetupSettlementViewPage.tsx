@@ -115,7 +115,7 @@ export default function MeetupSettlementViewPage() {
       </SectionCard>
 
       <SectionCard title={`참가자 ${snap.participants.length}명`}>
-        <BalanceList rows={snap.participants} />
+        <BalanceList rows={snap.participants} closed={closed} />
       </SectionCard>
 
       <SectionCard title={`지출 ${snap.expenses.length}건`}>

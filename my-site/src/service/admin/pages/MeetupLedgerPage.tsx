@@ -668,6 +668,7 @@ export default function MeetupLedgerPage() {
                 ) : null}
                 <BalanceList
                   rows={snapshot.participants}
+                  closed={ledger.status === 'closed'}
                   renderAction={(i) => {
                     const row = result.rows[i];
                     if (!row) return null;

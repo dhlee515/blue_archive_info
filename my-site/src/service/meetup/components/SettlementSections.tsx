@@ -123,11 +123,43 @@ function balanceView(r: BalanceRow): { text: string; color: string } {
   return dueView(r.balance);
 }
 
-/** 펼친 내역: 참석한 이벤트별 몫 → 부담, 선입금 + 직접 결제 → 낸 돈, 차이 */
-function BalanceDetail({ r }: { r: BalanceRow }) {
+/** 주고받은 금액을 과거형으로 — "1,667원 받음" / "10,000원 보냄" */
+const doneText = (amount: number) =>
+  amount > 0 ? `${fmt(amount)}원 받음` : amount < 0 ? `${fmt(-amount)}원 보냄` : '주고받을 돈 없음';
+
+/**
+ * 펼친 내역의 현재 상태 줄.
+ * 장부 정산 완료 → 전체 금액 과거형 / 사람별 완료 → 완료 시점 금액 과거형 + 그 뒤 생긴 차액 / 그 외 → 정산 전 금액
+ */
+function detailStatus(r: BalanceRow, closed: boolean): { text: string; color: string }[] {
+  const doneColor = 'text-teal-700 dark:text-teal-300';
+  if (closed) {
+    // 완료 체크 뒤 차액까지 주고받은 사람은 두 번을 나눠서 (합치면 "받았다가 더 보낸" 흐름이 안 보임)
+    if (r.settled && r.diff !== 0) {
+      return [
+        { text: `✓ 정산 완료 · ${doneText(r.balance - r.diff)}`, color: doneColor },
+        { text: `✓ 추가로 ${doneText(r.diff)}`, color: doneColor },
+      ];
+    }
+    return [{ text: `✓ 정산 완료 · ${doneText(r.balance)}`, color: doneColor }];
+  }
+  if (r.settled) {
+    const out = [{ text: `✓ 정산 완료 · ${doneText(r.balance - r.diff)}`, color: doneColor }];
+    if (r.diff > 0) out.push({ text: `추가로 받을 돈 ${fmt(r.diff)}원`, color: 'text-teal-700 dark:text-teal-300' });
+    if (r.diff < 0) out.push({ text: `추가로 보낼 돈 ${fmt(-r.diff)}원`, color: 'text-red-600 dark:text-red-400' });
+    return out;
+  }
+  return [dueView(r.balance)];
+}
+
+/**
+ * 펼친 내역: 참석한 이벤트별 몫 → 부담, 선입금 + 직접 결제 → 낸 돈, 차이 (계산 — 상태와 무관하게 항상) + 현재 상태
+ * @param closed 장부가 정산 완료 상태
+ */
+function BalanceDetail({ r, closed }: { r: BalanceRow; closed: boolean }) {
   const line = 'flex items-baseline justify-between gap-3';
   const shares = r.shares ?? [];
-  const due = dueView(r.balance);
+  const diffText = r.balance > 0 ? `+${fmt(r.balance)}원` : r.balance < 0 ? `−${fmt(-r.balance)}원` : '0원';
   return (
     <div className="col-span-full sm:max-w-md mt-1.5 mb-0.5 rounded-lg bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs text-gray-600 dark:text-slate-300 tabular-nums flex flex-col gap-0.5">
       {shares.length === 0 ? (
@@ -154,21 +186,33 @@ function BalanceDetail({ r }: { r: BalanceRow }) {
         <span>낸 돈 합계</span>
         <span>{fmt(r.paid)}</span>
       </div>
-      <div className={`${line} font-bold border-t border-gray-200 dark:border-slate-700 pt-1 mt-0.5`}>
-        <span>{r.isTreasurer ? '총무 — 통장과 합쳐 정리' : '낸 돈 − 부담'}</span>
-        <span className={due.color}>{r.isTreasurer ? '' : due.text}</span>
+      <div className={`${line} font-bold text-gray-800 dark:text-slate-100 border-t border-gray-200 dark:border-slate-700 pt-1 mt-0.5`}>
+        <span>낸 돈 − 부담</span>
+        <span>{diffText}</span>
       </div>
+      {r.isTreasurer ? (
+        <div className={`${line} ${muted}`}>총무 — 통장과 합쳐 정리</div>
+      ) : (
+        detailStatus(r, closed).map((st, k) => (
+          <div key={k} className={`flex justify-end font-bold ${st.color}`}>{st.text}</div>
+        ))
+      )}
     </div>
   );
 }
 
-/** 사람별 부담 / 낸 돈 / 순잔액. 이름을 누르면 내역이 펼쳐짐. renderAction 은 관리자 화면의 정산 완료 체크 칸 */
+/**
+ * 사람별 부담 / 낸 돈 / 순잔액. 이름을 누르면 내역이 펼쳐짐. renderAction 은 관리자 화면의 정산 완료 체크 칸
+ * @param closed 장부가 정산 완료 상태 — 펼친 내역의 상태 줄에 반영
+ */
 export function BalanceList({
   rows,
   renderAction,
+  closed = false,
 }: {
   rows: BalanceRow[];
   renderAction?: (index: number) => ReactNode;
+  closed?: boolean;
 }) {
   const [open, setOpen] = useState<Set<number>>(new Set());
   const toggle = (i: number) =>
@@ -251,7 +295,7 @@ export function BalanceList({
             {bv.text}
           </span>
           <span className="hidden sm:flex w-16 justify-end">{renderAction?.(i)}</span>
-          {isOpen && <BalanceDetail r={r} />}
+          {isOpen && <BalanceDetail r={r} closed={closed} />}
         </div>
         );
       })}
