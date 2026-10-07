@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
-import type { MeetupPublicSnapshot, MeetupSummary } from '@/types/meetup';
-import { surplusText, won } from '@/service/meetup/utils/meetupSettlement';
+import type { LegacyMeetupSummary, MeetupPublicSnapshot, MeetupSummary } from '@/types/meetup';
+import { won } from '@/service/meetup/utils/meetupSettlement';
 
 const card = 'bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700';
 
@@ -34,7 +34,40 @@ function Stat({ label, value, tone = 'default' }: { label: string; value: string
   );
 }
 
-export function SummaryGrid({ summary }: { summary: MeetupSummary }) {
+export function SummaryGrid({ summary }: { summary: MeetupSummary | LegacyMeetupSummary }) {
+  if (!('totalPrepaid' in summary)) return <LegacySummaryGrid summary={summary} />;
+  const hasTreasury = summary.totalPrepaid > 0 || summary.treasuryPaid > 0;
+  return (
+    // 화면 폭이 아니라 카드 폭 기준 (관리 화면 오른쪽 좁은 칸에서도 금액이 잘리지 않게)
+    <div className="@container flex flex-col gap-2">
+      <div className="grid grid-cols-2 @lg:grid-cols-4 gap-2">
+        <Stat label="총지출" value={won(summary.totalExpense)} />
+        {summary.totalPrepaid > 0 && <Stat label="선입금 합계" value={won(summary.totalPrepaid)} />}
+        {summary.treasuryPaid > 0 && <Stat label="통장에서 결제" value={won(summary.treasuryPaid)} />}
+        {hasTreasury && (
+          <Stat
+            label="정산 전 통장"
+            value={won(summary.treasuryCash)}
+            tone={summary.treasuryCash > 0 ? 'plus' : summary.treasuryCash < 0 ? 'minus' : 'default'}
+          />
+        )}
+      </div>
+      {hasTreasury && (
+        <p className="text-xs text-gray-500 dark:text-slate-400">
+          {summary.treasuryCash > 0
+            ? `통장에 남은 ${won(summary.treasuryCash)}은 정산 때 돌려줍니다.`
+            : summary.treasuryCash < 0
+              ? `총무가 먼저 낸 ${won(-summary.treasuryCash)}은 정산 때 받습니다.`
+              : '지금 통장 잔액은 0원입니다.'}
+          {' '}정산이 끝나면 통장은 0원이 됩니다.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** 참가비 구간 방식 시절 공개 스냅샷 — 다시 저장하기 전까지 공개 페이지에 남아 있을 수 있음 */
+function LegacySummaryGrid({ summary }: { summary: LegacyMeetupSummary }) {
   const hasFund = summary.totalFee > 0 || summary.feeCovered > 0;
   return (
     // 화면 폭이 아니라 카드 폭 기준 (관리 화면 오른쪽 좁은 칸에서도 금액이 잘리지 않게)
@@ -53,7 +86,7 @@ export function SummaryGrid({ summary }: { summary: MeetupSummary }) {
       </div>
       {hasFund && (
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          회비 충당 {won(summary.feeCovered)} · 참가자 분담 {won(summary.splitTotal)} · {surplusText(summary)}
+          회비 충당 {won(summary.feeCovered)} · 참가자 분담 {won(summary.splitTotal)}
           {summary.finalBalance !== 0 && <> · 정산 후 통장 {won(summary.finalBalance)}</>}
         </p>
       )}
@@ -103,6 +136,12 @@ export function BalanceList({
                 총무
               </span>
             )}
+            {!!r.prepaid && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 tabular-nums">
+                선입금 {r.prepaid.toLocaleString('ko-KR')}
+              </span>
+            )}
+            {/* 이전 형식 스냅샷 (참가비 구간) */}
             {r.tierLabel && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
                 {r.tierLabel}

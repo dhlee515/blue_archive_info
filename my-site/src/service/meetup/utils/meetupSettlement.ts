@@ -1,13 +1,15 @@
-// 오프라인 모임 회계 — 순수 계산 함수 (PLAN_meetup_ledger.md §2.3, §3)
+// 오프라인 모임 회계 — 순수 계산 함수 (PLAN_meetup_ledger.md §3, §10)
 //
 // 모든 금액은 정수(원). 부호 규칙: balance > 0 = 받을 돈, < 0 = 보낼 돈.
-// 총무(participant)와 모임 통장(TREASURY)은 송금 목록에서 한 노드로 합친다.
+// 참가자 i: 낸 돈 = 선입금 + 직접 결제한 지출, 부담 = 참석한 이벤트 몫의 합, balance = 낸 돈 − 부담.
+// 모임 통장(TREASURY, 총무가 보관): 현금 C = 선입금 합계 − 통장 결제. 정산이 끝나면 0 이 되어야 하므로 b_T = −C.
+// 불변식 Σb_i + b_T = 0 (모든 지출이 참석자에게 빠짐없이 나눠지므로).
+// 총무(participant)와 모임 통장은 송금 목록에서 한 노드로 합친다.
 
 import {
   TREASURY,
   type MeetupExpense,
   type MeetupExpenseCategory,
-  type MeetupExpenseCover,
   type MeetupLedgerData,
   type MeetupParticipant,
   type MeetupPeriod,
@@ -31,13 +33,10 @@ export const EXPENSE_CATEGORIES = Object.keys(CATEGORY_LABELS) as MeetupExpenseC
 
 export function emptyLedgerData(): MeetupLedgerData {
   return {
-    version: 1,
+    version: 2,
     treasurerId: null,
-    feeTiers: [],
     participants: [],
     expenses: [],
-    surplusMode: 'carry',
-    deficitMode: 'collect',
     transferMode: 'hub',
   };
 }
@@ -54,118 +53,106 @@ const dateOrNull = (v: unknown): string | null =>
 
 /**
  * DB 의 jsonb `data` (새 행은 `{}`) → 빠진 필드를 기본값으로 채운 장부.
- * 이전 형식(참석 기간 방식)의 분담은 여기서 이벤트 방식으로 바꾼다 — `period` 는 그 변환에만 쓴다:
- * - split (고른 사람끼리) → 고르지 않은 사람 = 불참
- * - present (그날 참석자) → 지출 날짜에 참석 기간 밖인 사람 = 불참 (하루짜리 모임이면 전원 참석)
+ * 이전 형식은 여기서 바꾼다 (다음 저장 때 새 형식으로 기록) — `period` 는 그 변환에만 쓴다:
+ * - 참가비 구간 + 선납 체크 → 선입금 (선납한 사람만 그 구간 금액, 미납은 0)
+ * - 회비에서 충당 (fee) → 전원 분담
+ * - 직접 선택 (split) → 고르지 않은 사람 불참
+ * - 그날 참석자 (present) → 지출 날짜에 참석 기간 밖인 사람 불참 (하루짜리 모임이면 전원 참석)
+ * - cover.event.absent → absent
  */
 export function normalizeLedgerData(raw: unknown, period: MeetupPeriod = { start: null, end: null }): MeetupLedgerData {
   const base = emptyLedgerData();
   if (!isObj(raw)) return base;
 
-  const feeTiers = arr(raw.feeTiers).filter(isObj).map((t) => ({
-    id: str(t.id),
-    label: str(t.label),
-    amount: int(t.amount),
-  }));
+  const tierAmount = new Map(
+    arr(raw.feeTiers).filter(isObj).map((t) => [str(t.id), int(t.amount)] as const),
+  );
   const rawParticipants = arr(raw.participants).filter(isObj);
   const participants: MeetupParticipant[] = rawParticipants.map((p) => ({
     id: str(p.id),
     userId: typeof p.userId === 'string' ? p.userId : null,
     name: str(p.name),
-    feeTierId: typeof p.feeTierId === 'string' ? p.feeTierId : null,
-    feePaid: p.feePaid === true,
+    prepaid: 'prepaid' in p
+      ? int(p.prepaid)
+      : p.feePaid === true && typeof p.feeTierId === 'string' ? (tierAmount.get(p.feeTierId) ?? 0) : 0,
     settledAmount: typeof p.settledAmount === 'number' && Number.isFinite(p.settledAmount) ? Math.trunc(p.settledAmount) : null,
     memo: str(p.memo),
   }));
   const pIds = participants.map((p) => p.id);
   const multiDay = !!period.start && !!period.end && period.end > period.start;
 
-  const expenses: MeetupExpense[] = arr(raw.expenses).filter(isObj).map((e) => {
+  /** 이전 형식의 cover → 불참자 목록 */
+  const legacyAbsent = (e: Record<string, unknown>): string[] => {
     const c = isObj(e.cover) ? e.cover : {};
-    let cover: MeetupExpenseCover;
-    if (c.kind === 'event') {
-      const absent = new Set(strs(c.absent));
-      cover = { kind: 'event', absent: pIds.filter((id) => absent.has(id)) };
-    } else if (c.kind === 'split') {
+    if (c.kind === 'event') return strs(c.absent);
+    if (c.kind === 'split') {
       const among = new Set(strs(c.among));
-      cover = { kind: 'event', absent: pIds.filter((id) => !among.has(id)) };
-    } else if (c.kind === 'present') {
-      const date = dateOrNull(e.date) ?? period.start;
-      const absent = multiDay && date
-        ? rawParticipants
-          .filter((p) => {
-            const from = dateOrNull(p.attendFrom) ?? (period.start as string);
-            const to = dateOrNull(p.attendTo) ?? (period.end as string);
-            return date < from || to < date;
-          })
-          .map((p) => str(p.id))
-        : [];
-      cover = { kind: 'event', absent };
-    } else {
-      cover = { kind: 'fee' };
+      return pIds.filter((id) => !among.has(id));
     }
+    if (c.kind === 'present') {
+      const date = dateOrNull(e.date) ?? period.start;
+      if (!multiDay || !date) return [];
+      return rawParticipants
+        .filter((p) => {
+          const from = dateOrNull(p.attendFrom) ?? (period.start as string);
+          const to = dateOrNull(p.attendTo) ?? (period.end as string);
+          return date < from || to < date;
+        })
+        .map((p) => str(p.id));
+    }
+    return []; // fee (회비에서) 또는 없음 → 전원 분담
+  };
+
+  const expenses: MeetupExpense[] = arr(raw.expenses).filter(isObj).map((e) => {
+    const absent = new Set(Array.isArray(e.absent) ? strs(e.absent) : legacyAbsent(e));
     return {
       id: str(e.id),
       label: str(e.label),
       category: oneOf(e.category, EXPENSE_CATEGORIES, 'etc'),
       amount: int(e.amount),
       paidBy: str(e.paidBy, TREASURY),
-      cover,
+      // 없는 참가자 id 정리 + 참가자 목록 순서
+      absent: pIds.filter((id) => absent.has(id)),
       memo: str(e.memo),
     };
   });
 
   return {
-    version: 1,
+    version: 2,
     treasurerId: typeof raw.treasurerId === 'string' ? raw.treasurerId : null,
-    feeTiers,
     participants,
     expenses,
-    surplusMode: oneOf(raw.surplusMode, ['carry', 'refund'] as const, base.surplusMode),
-    deficitMode: oneOf(raw.deficitMode, ['collect', 'absorb'] as const, base.deficitMode),
     transferMode: oneOf(raw.transferMode, ['hub', 'min'] as const, base.transferMode),
   };
 }
 
 // ── 조회 헬퍼 ───────────────────────────────────────────────
 
-export function feeOf(data: MeetupLedgerData, p: MeetupParticipant): number {
-  if (!p.feeTierId) return 0;
-  return data.feeTiers.find((t) => t.id === p.feeTierId)?.amount ?? 0;
-}
-
-/** 지출을 나눠 낼 참가자 id (목록 순서) — fee 는 빈 배열 (회비에서 충당), event 는 불참자를 뺀 전원 */
+/** 지출(이벤트)을 나눠 낼 참가자 id — 불참자를 뺀 전원 (목록 순서) */
 export function expenseSharers(data: MeetupLedgerData, e: MeetupExpense): string[] {
-  if (e.cover.kind === 'fee') return [];
-  const absent = new Set(e.cover.absent);
+  const absent = new Set(e.absent);
   return data.participants.filter((p) => !absent.has(p.id)).map((p) => p.id);
 }
-
-/** 참석자끼리 나누는 지출(이벤트)인지 */
-export const isEvent = (e: MeetupExpense): boolean => e.cover.kind === 'event';
 
 /** 이 참가자가 빠진 이벤트 이름 (입력 순서) */
 export function absentEventsOf(data: MeetupLedgerData, pid: string): string[] {
   return data.expenses
-    .filter((e) => e.cover.kind === 'event' && e.cover.absent.includes(pid))
-    .map((e, k) => e.label.trim() || `이벤트 ${k + 1}`);
+    .map((e, k) => ({ e, k }))
+    .filter(({ e }) => e.absent.includes(pid))
+    .map(({ e, k }) => e.label.trim() || `지출 ${k + 1}번`);
 }
 
-/** 이벤트 참석 토글 — 빠진 사람 목록에 넣거나 뺀다 (목록 순서 유지) */
+/** 이벤트 참석 ↔ 불참 토글 (불참자 목록은 참가자 목록 순서 유지) */
 export function toggleAbsent(data: MeetupLedgerData, e: MeetupExpense, pid: string): MeetupExpense {
-  if (e.cover.kind !== 'event') return e;
-  const absent = new Set(e.cover.absent);
+  const absent = new Set(e.absent);
   if (absent.has(pid)) absent.delete(pid);
   else absent.add(pid);
-  return { ...e, cover: { kind: 'event', absent: data.participants.map((p) => p.id).filter((id) => absent.has(id)) } };
+  return { ...e, absent: data.participants.map((p) => p.id).filter((id) => absent.has(id)) };
 }
 
-/** 모임 통장(총무)이 관여하는 장부인지 — 참가비 / 통장 결제 / 회비 충당 지출 중 하나라도 있으면 총무 필수 */
+/** 모임 통장(총무)이 관여하는 장부인지 — 선입금 / 통장 결제가 하나라도 있으면 정산 총무 필수 */
 export function needsTreasurer(data: MeetupLedgerData): boolean {
-  return (
-    data.participants.some((p) => feeOf(data, p) > 0)
-    || data.expenses.some((e) => e.paidBy === TREASURY || e.cover.kind === 'fee')
-  );
+  return data.participants.some((p) => p.prepaid > 0) || data.expenses.some((e) => e.paidBy === TREASURY);
 }
 
 /** 실제 적용되는 송금 방식 — 총무가 없으면 `min` 고정 */
@@ -178,7 +165,7 @@ export function effectiveTransferMode(data: MeetupLedgerData): MeetupTransferMod
 export interface LedgerIssue {
   message: string;
   /** 오류 표시할 행 */
-  target?: { kind: 'participant' | 'expense' | 'feeTier' | 'treasurer'; id?: string };
+  target?: { kind: 'participant' | 'expense' | 'treasurer'; id?: string };
 }
 
 /**
@@ -187,11 +174,6 @@ export interface LedgerIssue {
 export function validateLedger(data: MeetupLedgerData, treasurerUserIds: string[] = []): LedgerIssue[] {
   const issues: LedgerIssue[] = [];
   const pIds = new Set(data.participants.map((p) => p.id));
-  const tierIds = new Set(data.feeTiers.map((t) => t.id));
-
-  data.feeTiers.forEach((t, i) => {
-    if (!t.label.trim()) issues.push({ message: `참가비 구간 ${i + 1}번의 이름이 비어 있습니다.`, target: { kind: 'feeTier', id: t.id } });
-  });
 
   const seen = new Map<string, string>();
   const seenUsers = new Set<string>();
@@ -211,9 +193,6 @@ export function validateLedger(data: MeetupLedgerData, treasurerUserIds: string[
       issues.push({ message: `닉네임 "${name}" 이(가) 중복됩니다.`, target: { kind: 'participant', id: p.id } });
     }
     seen.set(name, p.id);
-    if (p.feeTierId && !tierIds.has(p.feeTierId)) {
-      issues.push({ message: `${name}: 참가비 구간이 삭제되었습니다. 다시 선택하세요.`, target: { kind: 'participant', id: p.id } });
-    }
   });
 
   data.expenses.forEach((e, i) => {
@@ -223,7 +202,7 @@ export function validateLedger(data: MeetupLedgerData, treasurerUserIds: string[
     if (e.paidBy !== TREASURY && !pIds.has(e.paidBy)) {
       issues.push({ message: `${name}: 결제자가 삭제되었습니다. 다시 선택하세요.`, target: { kind: 'expense', id: e.id } });
     }
-    if (e.cover.kind === 'event' && expenseSharers(data, e).length === 0) {
+    if (expenseSharers(data, e).length === 0) {
       issues.push({ message: `${name}: 참석자가 없습니다. 1명 이상 참석으로 두세요.`, target: { kind: 'expense', id: e.id } });
     }
   });
@@ -234,16 +213,13 @@ export function validateLedger(data: MeetupLedgerData, treasurerUserIds: string[
   } else if (settleTreasurer && treasurerUserIds.length > 0 && !treasurerUserIds.includes(settleTreasurer.userId ?? '')) {
     issues.push({ message: '정산 총무(송금 받는 사람)는 총무 중 한 명이어야 합니다.', target: { kind: 'treasurer' } });
   } else if (!data.treasurerId && needsTreasurer(data)) {
-    issues.push({
-      message: '참가비 · 모임 통장 결제 · 회비 충당 지출이 있으면 총무를 지정해야 합니다.',
-      target: { kind: 'treasurer' },
-    });
+    issues.push({ message: '선입금이나 모임 통장 결제가 있으면 정산 총무를 지정해야 합니다.', target: { kind: 'treasurer' } });
   }
 
   return issues;
 }
 
-// ── 분배 (§3.1, §3.2) ───────────────────────────────────────
+// ── 분배 ───────────────────────────────────────────────────
 
 /** 균등 분배. 나머지 원은 목록 앞쪽부터 1원씩. 합계 = amount */
 export function splitEven(amount: number, ids: string[]): Map<string, number> {
@@ -256,42 +232,15 @@ export function splitEven(amount: number, ids: string[]): Map<string, number> {
   return out;
 }
 
-/** 비례 분배 (최대 잔여 방식). 동점은 목록 순서. 가중치 합 0 이면 균등 분배. 합계 = amount */
-export function splitProportional(amount: number, ids: string[], weights: number[]): Map<string, number> {
-  const sw = weights.reduce((s, w) => s + w, 0);
-  if (sw <= 0) return splitEven(amount, ids);
-  const rows = ids.map((id, k) => ({
-    id,
-    k,
-    q: Math.floor((amount * weights[k]) / sw),
-    r: (amount * weights[k]) % sw,
-  }));
-  let left = amount - rows.reduce((s, x) => s + x.q, 0);
-  [...rows]
-    .sort((a, b) => b.r - a.r || a.k - b.k)
-    .forEach((x) => {
-      if (left > 0) {
-        x.q += 1;
-        left -= 1;
-      }
-    });
-  return new Map(rows.map((x) => [x.id, x.q]));
-}
-
-// ── 정산 (§3.3, §3.4) ───────────────────────────────────────
+// ── 정산 (§3.4) ─────────────────────────────────────────────
 
 export interface ParticipantBalance {
   id: string;
   name: string;
-  tierLabel: string | null;
-  fee: number;
-  /** 분담 지출 몫 합계 */
-  splitShare: number;
-  /** 환급(−) / 추가 징수(+) */
-  adjustment: number;
-  /** 부담해야 할 돈 */
+  prepaid: number;
+  /** 부담해야 할 돈 = 참석한 이벤트 몫의 합 */
   owed: number;
-  /** 이미 낸 돈 (선납 참가비 + 직접 결제한 지출) */
+  /** 이미 낸 돈 = 선입금 + 직접 결제한 지출 */
   paid: number;
   /** paid − owed */
   balance: number;
@@ -304,9 +253,9 @@ export interface ParticipantBalance {
 export interface SettlementResult {
   summary: MeetupSummary;
   rows: ParticipantBalance[];
-  /** 모임 통장의 순잔액 b_T = R − C */
+  /** 모임 통장의 순잔액 b_T = −C (정산 후 통장은 0) */
   treasuryBalance: number;
-  /** 지금 통장에 있는 돈 C */
+  /** 지금 통장에 있는 돈 C = 선입금 합계 − 통장 결제 */
   treasuryCash: number;
   transferMode: MeetupTransferMode;
   transfers: SettlementTransfer[];
@@ -317,30 +266,6 @@ export interface SettlementResult {
 }
 
 export function computeSettlement(data: MeetupLedgerData): SettlementResult {
-  const ps = data.participants;
-  const ids = ps.map((p) => p.id);
-  const fees = ps.map((p) => feeOf(data, p));
-  const tierLabel = (p: MeetupParticipant) => data.feeTiers.find((t) => t.id === p.feeTierId)?.label ?? null;
-
-  const totalFee = fees.reduce((s, f) => s + f, 0);
-  const paidFee = ps.reduce((s, p, k) => s + (p.feePaid ? fees[k] : 0), 0);
-  const totalExpense = data.expenses.reduce((s, e) => s + e.amount, 0);
-  const feeCovered = data.expenses.filter((e) => e.cover.kind === 'fee').reduce((s, e) => s + e.amount, 0);
-  const splitTotal = totalExpense - feeCovered;
-  const r0 = totalFee - feeCovered;
-
-  // 회비 잔액 처리 (§3.3)
-  let adjust = new Map<string, number>();
-  let finalBalance = r0;
-  if (r0 > 0 && data.surplusMode === 'refund' && ids.length > 0) {
-    adjust = new Map([...splitProportional(r0, ids, fees)].map(([id, v]) => [id, -v]));
-    finalBalance = 0;
-  } else if (r0 < 0 && data.deficitMode === 'collect' && ids.length > 0) {
-    adjust = splitProportional(-r0, ids, fees);
-    finalBalance = 0;
-  }
-
-  // 분담 몫
   const share = new Map<string, number>();
   for (const e of data.expenses) {
     for (const [id, v] of splitEven(e.amount, expenseSharers(data, e))) share.set(id, (share.get(id) ?? 0) + v);
@@ -351,21 +276,16 @@ export function computeSettlement(data: MeetupLedgerData): SettlementResult {
   }
 
   const mode = effectiveTransferMode(data);
-  const rows: ParticipantBalance[] = ps.map((p, k) => {
-    const splitShare = share.get(p.id) ?? 0;
-    const adjustment = adjust.get(p.id) ?? 0;
-    const owed = fees[k] + splitShare + adjustment;
-    const paid = (p.feePaid ? fees[k] : 0) + (paidExpense.get(p.id) ?? 0);
+  const rows: ParticipantBalance[] = data.participants.map((p) => {
+    const owed = share.get(p.id) ?? 0;
+    const paid = p.prepaid + (paidExpense.get(p.id) ?? 0);
     const balance = paid - owed;
     const isTreasurer = p.id === data.treasurerId;
     const settled = p.settledAmount !== null && !isTreasurer;
     return {
       id: p.id,
       name: p.name.trim(),
-      tierLabel: tierLabel(p),
-      fee: fees[k],
-      splitShare,
-      adjustment,
+      prepaid: p.prepaid,
       owed,
       paid,
       balance,
@@ -375,24 +295,17 @@ export function computeSettlement(data: MeetupLedgerData): SettlementResult {
     };
   });
 
-  const treasuryCash = paidFee - data.expenses.filter((e) => e.paidBy === TREASURY).reduce((s, e) => s + e.amount, 0);
-  const treasuryBalance = finalBalance - treasuryCash;
+  const totalExpense = data.expenses.reduce((s, e) => s + e.amount, 0);
+  const totalPrepaid = data.participants.reduce((s, p) => s + p.prepaid, 0);
+  const treasuryPaid = data.expenses.filter((e) => e.paidBy === TREASURY).reduce((s, e) => s + e.amount, 0);
+  const treasuryCash = totalPrepaid - treasuryPaid;
+  const treasuryBalance = -treasuryCash;
   const balanced = rows.reduce((s, r) => s + r.balance, 0) + treasuryBalance === 0;
 
   const transfers = mode === 'hub' ? hubTransfers(rows) : minTransfers(rows, treasuryBalance, !!data.treasurerId);
 
   return {
-    summary: {
-      totalFee,
-      paidFee,
-      totalExpense,
-      feeCovered,
-      splitTotal,
-      r0,
-      surplusMode: data.surplusMode,
-      deficitMode: data.deficitMode,
-      finalBalance,
-    },
+    summary: { totalExpense, totalPrepaid, treasuryPaid, treasuryCash },
     rows,
     treasuryBalance,
     treasuryCash,
@@ -458,18 +371,18 @@ export function nodeName(data: MeetupLedgerData, key: string): string {
   return data.participants.find((p) => p.id === key)?.name.trim() ?? '(삭제됨)';
 }
 
+/** "전원 분담 (3명)" / "2명 분담 · 불참 C" / "2명 분담 · 불참 4명" */
 export function coverLabel(data: MeetupLedgerData, e: MeetupExpense): string {
-  if (e.cover.kind === 'fee') return '회비';
   const n = expenseSharers(data, e).length;
-  if (e.cover.absent.length === 0) return `전원 분담 (${n}명)`;
-  const absent = e.cover.absent.map((id) => nodeName(data, id));
+  if (e.absent.length === 0) return `전원 분담 (${n}명)`;
+  const absent = e.absent.map((id) => nodeName(data, id));
   return absent.length <= 3 ? `${n}명 분담 · 불참 ${absent.join(', ')}` : `${n}명 분담 · 불참 ${absent.length}명`;
 }
 
 export function buildPublicSnapshot(data: MeetupLedgerData, result: SettlementResult): MeetupPublicSnapshot {
   const treasurer = data.participants.find((p) => p.id === data.treasurerId);
   return {
-    version: 1,
+    version: 2,
     generatedAt: new Date().toISOString(),
     treasurerName: treasurer ? treasurer.name.trim() : null,
     transferMode: result.transferMode,
@@ -483,12 +396,11 @@ export function buildPublicSnapshot(data: MeetupLedgerData, result: SettlementRe
     })),
     participants: result.rows.map((r) => ({
       name: r.name,
-      tierLabel: r.tierLabel,
+      prepaid: r.prepaid,
       absentEvents: absentEventsOf(data, r.id),
       owed: r.owed,
       paid: r.paid,
       balance: r.balance,
-      feePaid: data.participants.find((p) => p.id === r.id)?.feePaid ?? false,
       isTreasurer: r.isTreasurer,
       settled: r.settled && result.transferMode === 'hub',
       diff: r.diff,
@@ -502,6 +414,12 @@ export function buildPublicSnapshot(data: MeetupLedgerData, result: SettlementRe
 }
 
 export const won = (n: number): string => `${n.toLocaleString('ko-KR')}원`;
+
+/** 한 줄 요약: "선입금 60,000원 · 총지출 40,000원" */
+export function summaryText(summary: MeetupSummary): string {
+  const total = `총지출 ${won(summary.totalExpense)}`;
+  return summary.totalPrepaid > 0 ? `선입금 ${won(summary.totalPrepaid)} · ${total}` : total;
+}
 
 // ── 모임 기간 ──────────────────────────────────────────────
 
@@ -533,13 +451,6 @@ function shortPeriod(start: string | null, end: string | null): string {
   return !end || end === start ? md(start) : `${md(start)}~${md(end)}`;
 }
 
-export function surplusText(summary: MeetupSummary): string {
-  const { r0, surplusMode, deficitMode } = summary;
-  if (r0 > 0) return surplusMode === 'refund' ? `잔액 ${won(r0)} 환급` : `잔액 ${won(r0)} 이월`;
-  if (r0 < 0) return deficitMode === 'collect' ? `부족 ${won(-r0)} 추가 징수` : `부족 ${won(-r0)} 총무 부담`;
-  return '잔액 0원';
-}
-
 /** 카톡 / 디스코드 붙여넣기용 정산 문구. account 는 저장하지 않는 입력값 */
 export function buildShareText(
   title: string,
@@ -555,9 +466,8 @@ export function buildShareText(
   lines.push(`[${date}${title.trim()} 정산]`);
   const s = result.summary;
   const parts: string[] = [];
-  if (s.totalFee > 0) parts.push(`총 참가비 ${s.totalFee.toLocaleString('ko-KR')}`);
+  if (s.totalPrepaid > 0) parts.push(`선입금 ${s.totalPrepaid.toLocaleString('ko-KR')}`);
   parts.push(`총지출 ${s.totalExpense.toLocaleString('ko-KR')}`);
-  if (s.totalFee > 0 || s.feeCovered > 0) parts.push(surplusText(s));
   lines.push(parts.join(' / '));
   lines.push('');
 

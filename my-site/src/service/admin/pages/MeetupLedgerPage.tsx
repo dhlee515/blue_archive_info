@@ -5,7 +5,6 @@ import {
   TREASURY,
   type MeetupExpense,
   type MeetupExpenseCategory,
-  type MeetupFeeTier,
   type MeetupLedger,
   type MeetupLedgerData,
   type MeetupLedgerStatus,
@@ -23,11 +22,10 @@ import {
   buildShareText,
   computeSettlement,
   expenseSharers,
-  isEvent,
   needsTreasurer,
   normalizePeriod,
   periodError,
-  surplusText,
+  summaryText,
   toggleAbsent,
   validateLedger,
   won,
@@ -154,26 +152,11 @@ export default function MeetupLedgerPage() {
   const periodErr = periodError(startDate, endDate);
   const canSave = !saving && issues.length === 0 && title.trim() !== '' && !periodErr;
   const hasTreasurer = !!data.treasurerId;
-  /** 참석자끼리 나누는 지출 (고기 1차 · 노래방 2차 …) — 참가자 행에서 참석 칩으로도 보여 준다 */
-  const events = data.expenses.filter(isEvent);
+  /** 지출 = 이벤트 (고기 1차 · 노래방 2차 …) — 참가자 행에서 참석 칩으로도 보여 준다 */
+  const events = data.expenses;
   const pName = (pid: string) => data.participants.find((p) => p.id === pid)?.name.trim() || '(이름 없음)';
 
   const update = (fn: (d: MeetupLedgerData) => MeetupLedgerData) => setData((d) => (d ? fn(d) : d));
-
-  // ── 참가비 구간 ──
-  const addTier = () =>
-    update((d) => ({ ...d, feeTiers: [...d.feeTiers, { id: newId(), label: '', amount: 0 }] }));
-  const updateTier = (tid: string, patch: Partial<MeetupFeeTier>) =>
-    update((d) => ({ ...d, feeTiers: d.feeTiers.map((t) => (t.id === tid ? { ...t, ...patch } : t)) }));
-  const removeTier = (tid: string) => {
-    const used = data.participants.filter((p) => p.feeTierId === tid).length;
-    if (used > 0 && !confirm(`${used}명이 이 구간을 쓰고 있습니다. 삭제하면 이 사람들은 '참가비 없음'으로 바뀝니다.`)) return;
-    update((d) => ({
-      ...d,
-      feeTiers: d.feeTiers.filter((t) => t.id !== tid),
-      participants: d.participants.map((p) => (p.feeTierId === tid ? { ...p, feeTierId: null } : p)),
-    }));
-  };
 
   // ── 참가자 ──
   /** 회원을 참가자로 추가. 닉네임은 추가 시점 값을 복사하고, 장부 안에서 겹치면 " (2)" 를 붙인다 (회원가입 시 닉네임 중복을 막지 않음) */
@@ -186,13 +169,11 @@ export default function MeetupLedgerPage() {
       taken.add(name);
       return name;
     };
-    const defaultTier = data.feeTiers[0]?.id ?? null;
     const added: MeetupParticipant[] = members.map((m) => ({
       id: newId(),
       userId: m.id,
       name: uniqueName(m.nickname),
-      feeTierId: defaultTier,
-      feePaid: false,
+      prepaid: 0,
       settledAmount: null,
       memo: '',
     }));
@@ -227,7 +208,7 @@ export default function MeetupLedgerPage() {
       expenses: d.expenses.map((e) => ({
         ...e,
         paidBy: e.paidBy === pid ? TREASURY : e.paidBy,
-        cover: e.cover.kind === 'event' ? { kind: 'event', absent: e.cover.absent.filter((x) => x !== pid) } : e.cover,
+        absent: e.absent.filter((x) => x !== pid),
       })),
     }));
   };
@@ -240,8 +221,8 @@ export default function MeetupLedgerPage() {
       category: 'etc',
       amount: 0,
       paidBy: hasTreasurer ? TREASURY : (data.participants[0]?.id ?? TREASURY),
-      // 참석자 분담은 전원 참석으로 시작 — 안 간 사람만 뺀다
-      cover: data.feeTiers.length > 0 ? { kind: 'fee' } : { kind: 'event', absent: [] },
+      // 전원 참석으로 시작 — 안 간 사람만 뺀다
+      absent: [],
       memo: '',
     };
     update((d) => ({ ...d, expenses: [...d.expenses, expense] }));
@@ -448,33 +429,6 @@ export default function MeetupLedgerPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-4 md:gap-6 items-start">
         {/* 왼쪽: 입력 */}
         <fieldset disabled={locked} className="min-w-0 flex flex-col gap-4 md:gap-6 border-0 p-0 m-0">
-          {/* 참가비 구간 */}
-          <SectionCard
-            title="참가비 구간"
-            right={<button type="button" onClick={addTier} className={`${smallBtn} bg-teal-600 hover:bg-teal-700 text-white`}><Plus size={14} />구간</button>}
-          >
-            {data.feeTiers.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-slate-400">참가비가 없는 모임(더치페이만)이면 비워 두세요.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {data.feeTiers.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={t.label}
-                      onChange={(e) => updateTier(t.id, { label: e.target.value })}
-                      placeholder="구간 이름 (예: 1차)"
-                      className={`${inputCls} flex-1 min-w-0 ${issueIds.has(t.id) ? errorRing : ''}`}
-                    />
-                    <NumberInput value={t.amount} onChange={(n) => updateTier(t.id, { amount: n })} zeroAsEmpty placeholder="금액" className={`${inputCls} w-28 text-right tabular-nums`} />
-                    <span className="text-sm text-gray-500 dark:text-slate-400">원</span>
-                    <button type="button" onClick={() => removeTier(t.id)} className="p-1.5 text-gray-400 hover:text-red-500" aria-label="구간 삭제"><Trash2 size={16} /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-
           {/* 참가자 */}
           <SectionCard
             title={`참가자 ${data.participants.length}명`}
@@ -542,24 +496,16 @@ export default function MeetupLedgerPage() {
                       <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400" title="회원 연결 기능 이전에 직접 입력한 참가자">비회원</span>
                     </span>
                   )}
-                  {data.feeTiers.length > 0 && (
-                    <select
-                      value={p.feeTierId ?? ''}
-                      onChange={(e) => updateParticipant(p.id, { feeTierId: e.target.value || null })}
-                      className={inputCls}
-                    >
-                      <option value="">참가비 없음</option>
-                      {data.feeTiers.map((t) => (
-                        <option key={t.id} value={t.id}>{t.label || '(이름 없음)'} {t.amount.toLocaleString('ko-KR')}</option>
-                      ))}
-                    </select>
-                  )}
-                  {p.feeTierId && (
-                    <label className="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-slate-300" title="정산 전에 참가비를 미리 냈으면 체크">
-                      <input type="checkbox" checked={p.feePaid} onChange={(e) => updateParticipant(p.id, { feePaid: e.target.checked })} />
-                      선납
-                    </label>
-                  )}
+                  <label className="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-slate-300" title="정산 전에 총무(모임 통장)에게 미리 낸 돈 — 정산 때 자기 부담에서 빠집니다">
+                    선입금
+                    <NumberInput
+                      value={p.prepaid}
+                      onChange={(n) => updateParticipant(p.id, { prepaid: n })}
+                      zeroAsEmpty
+                      placeholder="0"
+                      className={`${inputCls} w-24 text-right tabular-nums`}
+                    />
+                  </label>
                   {/* ◉ 정산 = 송금 받는 대표 총무. 총무가 임명돼 있으면 총무 중에서만, 아니면(이전 장부) 최고 관리자가 아무나 */}
                   {(treasurerIds.length === 0 || isTreasurerRow(p)) && (
                     <label className="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-slate-300" title="정산 송금을 받는 대표 총무">
@@ -588,7 +534,7 @@ export default function MeetupLedgerPage() {
                     <div className="basis-full flex flex-wrap items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300">
                       <span className="font-medium mr-0.5">참석</span>
                       {events.map((e) => {
-                        const on = e.cover.kind === 'event' && !e.cover.absent.includes(p.id);
+                        const on = !e.absent.includes(p.id);
                         return (
                           <button
                             key={e.id}
@@ -616,7 +562,7 @@ export default function MeetupLedgerPage() {
           >
             {data.expenses.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-slate-400">
-                고기 1차 · 노래방 2차 · 대관비처럼 쓴 돈을 추가하세요. 참석자끼리 나누는 지출은 전원 참석으로 시작하니, 안 간 사람만 빼면 됩니다.
+                고기 1차 · 노래방 2차 · 대관비처럼 쓴 돈을 추가하세요. 전원 참석으로 시작하니 안 간 사람만 빼면 되고, 간 사람끼리 똑같이 나눕니다.
               </p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -644,23 +590,10 @@ export default function MeetupLedgerPage() {
                           {data.participants.map((p) => <option key={p.id} value={p.id}>{p.name.trim() || '(이름 없음)'}</option>)}
                         </select>
                       </label>
-                      <label className="inline-flex items-center gap-1">
-                        충당
-                        <select
-                          value={e.cover.kind}
-                          onChange={(ev) =>
-                            updateExpense(e.id, { cover: ev.target.value === 'fee' ? { kind: 'fee' } : { kind: 'event', absent: [] } })
-                          }
-                          className={inputCls}
-                        >
-                          <option value="event">참석자끼리 분담</option>
-                          <option value="fee">회비에서</option>
-                        </select>
-                      </label>
                     </div>
-                    {e.cover.kind === 'event' && (() => {
+                    {(() => {
                       const n = expenseSharers(data, e).length;
-                      const absent = e.cover.absent;
+                      const absent = e.absent;
                       return (
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-xs text-gray-500 dark:text-slate-400 mr-1 tabular-nums">
@@ -668,7 +601,7 @@ export default function MeetupLedgerPage() {
                             {n > 0 && e.amount > 0 && <> · 1인 {e.amount % n === 0 ? '' : '약 '}{won(Math.floor(e.amount / n))}</>}
                           </span>
                           {absent.length > 0 && (
-                            <button type="button" onClick={() => updateExpense(e.id, { cover: { kind: 'event', absent: [] } })} className="text-xs text-teal-700 dark:text-teal-300 hover:underline mr-1">
+                            <button type="button" onClick={() => updateExpense(e.id, { absent: [] })} className="text-xs text-teal-700 dark:text-teal-300 hover:underline mr-1">
                               전원 참석
                             </button>
                           )}
@@ -706,16 +639,6 @@ export default function MeetupLedgerPage() {
           {/* 정산 설정 */}
           <SectionCard title="정산 설정">
             <div className="flex flex-col gap-3 text-sm text-gray-700 dark:text-slate-300">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span className="text-xs font-medium text-gray-500 dark:text-slate-400 w-24">회비가 남으면</span>
-                <label className="inline-flex items-center gap-1"><input type="radio" name="surplus" checked={data.surplusMode === 'carry'} onChange={() => update((d) => ({ ...d, surplusMode: 'carry' }))} />이월 (통장 보관)</label>
-                <label className="inline-flex items-center gap-1"><input type="radio" name="surplus" checked={data.surplusMode === 'refund'} onChange={() => update((d) => ({ ...d, surplusMode: 'refund' }))} />참가비 비례 환급</label>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span className="text-xs font-medium text-gray-500 dark:text-slate-400 w-24">회비가 모자라면</span>
-                <label className="inline-flex items-center gap-1"><input type="radio" name="deficit" checked={data.deficitMode === 'collect'} onChange={() => update((d) => ({ ...d, deficitMode: 'collect' }))} />참가비 비례 추가 징수</label>
-                <label className="inline-flex items-center gap-1"><input type="radio" name="deficit" checked={data.deficitMode === 'absorb'} onChange={() => update((d) => ({ ...d, deficitMode: 'absorb' }))} />총무 부담</label>
-              </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span className="text-xs font-medium text-gray-500 dark:text-slate-400 w-24">송금 방식</span>
                 <label className="inline-flex items-center gap-1"><input type="radio" name="transfer" disabled={!hasTreasurer} checked={result.transferMode === 'hub'} onChange={() => update((d) => ({ ...d, transferMode: 'hub' }))} />총무 경유</label>
@@ -854,9 +777,7 @@ export default function MeetupLedgerPage() {
             {issues.length > 0 ? `입력 오류 ${issues.length}건` : `송금 ${result.transfers.length}건 보기`}
           </div>
           <div className="text-sm font-bold text-gray-800 dark:text-slate-100 truncate tabular-nums">
-            {result.summary.totalFee > 0 || result.summary.feeCovered > 0
-              ? surplusText(result.summary)
-              : `총지출 ${won(result.summary.totalExpense)}`}
+            {summaryText(result.summary)}
           </div>
         </button>
         {!readOnly && (

@@ -1,12 +1,7 @@
-// 오프라인 모임 회계 장부 — PLAN_meetup_ledger.md §2
-
-/** 참가비 구간 (예: '1차' 30,000 / '1+2차' 45,000) */
-export interface MeetupFeeTier {
-  id: string;
-  label: string;
-  /** 원, 정수 ≥ 0 */
-  amount: number;
-}
+// 오프라인 모임 회계 장부 — PLAN_meetup_ledger.md §2, §10
+//
+// 모델: 참가자는 선입금(미리 낸 돈)을 낼 수 있고, 지출 하나 = 이벤트 (예: 고기 1차 30,000).
+// 이벤트마다 참석한 사람끼리 실제 금액을 균등 분담하고, 끝나면 "선입금 + 직접 결제 − 분담" 차액만 정산한다.
 
 export interface MeetupParticipant {
   id: string;
@@ -14,10 +9,8 @@ export interface MeetupParticipant {
   userId: string | null;
   /** 닉네임 — 회원이면 추가 시점의 닉네임을 복사 (결산 기록이므로 이후 변경을 따라가지 않음). 장부 안에서 중복 불가 */
   name: string;
-  /** null = 참가비 없음 (더치페이 전용 모임) */
-  feeTierId: string | null;
-  /** 참가비를 정산 전에 미리 냈는지. 정산 송금에 참가비를 같이 보낸 경우는 체크하지 않는다 (이중 계산 방지) */
-  feePaid: boolean;
+  /** 정산 전에 모임 통장(총무)에 미리 낸 돈 (원, 정수 ≥ 0). 정산 때 자기 부담에서 그대로 빠진다 */
+  prepaid: number;
   /** 정산 완료 체크 시점의 순잔액 (null = 미완료). 현재 순잔액과 다르면 그 차이가 추가로 주고받을 차액 */
   settledAmount: number | null;
   /** 내부 메모 — 공개 스냅샷 제외 */
@@ -26,19 +19,10 @@ export interface MeetupParticipant {
 
 export type MeetupExpenseCategory = 'venue' | 'food' | 'goods' | 'transport' | 'etc';
 
-/**
- * 지출 충당 방식
- * - fee: 회비에서 충당
- * - event: 이 지출(이벤트 — 예: 고기 1차)에 참석한 사람끼리 균등 분담.
- *   빠진 사람만 저장하므로 기본은 전원 참석이고, 나중에 추가한 참가자도 참석으로 잡힌다
- */
-export type MeetupExpenseCover =
-  | { kind: 'fee' }
-  | { kind: 'event'; absent: string[] };
-
-/** 결제자: 모임 통장(총무) 또는 participant id */
+/** 결제자: 모임 통장(총무 — 선입금을 보관) 또는 participant id */
 export const TREASURY = 'treasury';
 
+/** 지출 = 이벤트. 참석한 사람끼리 균등 분담 */
 export interface MeetupExpense {
   id: string;
   label: string;
@@ -47,27 +31,24 @@ export interface MeetupExpense {
   amount: number;
   /** TREASURY 또는 participant id */
   paidBy: string;
-  cover: MeetupExpenseCover;
+  /**
+   * 불참한 participant id. 빠진 사람만 저장하므로 기본은 전원 참석이고,
+   * 나중에 추가한 참가자도 참석으로 잡힌다
+   */
+  absent: string[];
   /** 내부 메모 — 공개 스냅샷 제외 */
   memo: string;
 }
 
-export type MeetupSurplusMode = 'carry' | 'refund';
-export type MeetupDeficitMode = 'collect' | 'absorb';
 export type MeetupTransferMode = 'hub' | 'min';
 
-/** jsonb `data` 컬럼에 저장되는 장부 본문 */
+/** jsonb `data` 컬럼에 저장되는 장부 본문 (이전 형식은 normalizeLedgerData 가 읽을 때 변환) */
 export interface MeetupLedgerData {
-  version: 1;
-  /** 총무 participant id */
+  version: 2;
+  /** 정산 총무 participant id — 송금이 모이고 선입금 · 통장 결제를 맡는 사람 */
   treasurerId: string | null;
-  feeTiers: MeetupFeeTier[];
   participants: MeetupParticipant[];
   expenses: MeetupExpense[];
-  /** 회비 잔액이 남을 때: 이월 / 참가비 비례 환급 */
-  surplusMode: MeetupSurplusMode;
-  /** 회비가 모자랄 때: 참가비 비례 추가 징수 / 총무 부담 */
-  deficitMode: MeetupDeficitMode;
   /** 송금 방식: 총무 경유 / 송금 건수 줄이기 */
   transferMode: MeetupTransferMode;
 }
@@ -108,13 +89,36 @@ export interface SettlementTransfer {
   amount: number;
 }
 
-/** 공개 결산 페이지가 그대로 렌더하는 스냅샷 (내부 메모 제외) */
+export interface MeetupSummary {
+  totalExpense: number;
+  /** 선입금 합계 */
+  totalPrepaid: number;
+  /** 모임 통장(선입금)에서 결제한 지출 합계 */
+  treasuryPaid: number;
+  /** 정산 전 통장 잔액 = 선입금 합계 − 통장 결제 (음수 = 총무가 모자란 돈을 먼저 냄). 정산이 끝나면 0 */
+  treasuryCash: number;
+}
+
+/** 참가비 구간 방식 시절 공개 스냅샷의 요약 — 다시 저장하기 전까지 공개 페이지에 남아 있을 수 있음 */
+export interface LegacyMeetupSummary {
+  totalFee: number;
+  paidFee: number;
+  totalExpense: number;
+  feeCovered: number;
+  splitTotal: number;
+  r0: number;
+  surplusMode: 'carry' | 'refund';
+  deficitMode: 'collect' | 'absorb';
+  finalBalance: number;
+}
+
+/** 공개 결산 페이지가 그대로 렌더하는 스냅샷 (내부 메모 · 회원 id 제외). version 1 = 이전 형식 */
 export interface MeetupPublicSnapshot {
-  version: 1;
+  version: 1 | 2;
   generatedAt: string;
   treasurerName: string | null;
   transferMode: MeetupTransferMode;
-  summary: MeetupSummary;
+  summary: MeetupSummary | LegacyMeetupSummary;
   expenses: {
     /** 이전 형식 스냅샷 (참석 기간 방식) 에만 있음 */
     date?: string | null;
@@ -126,15 +130,17 @@ export interface MeetupPublicSnapshot {
   }[];
   participants: {
     name: string;
-    tierLabel: string | null;
+    /** 선입금 (이전 형식 스냅샷에는 없음) */
+    prepaid?: number;
     /** 빠진 이벤트 이름 (전부 참석이면 빈 배열). 이전 형식 스냅샷에는 없음 */
     absentEvents?: string[];
-    /** 이전 형식 스냅샷 (참석 기간 방식) 에만 있음 */
+    /** 이전 형식 스냅샷 (참가비 구간 · 참석 기간 방식) 에만 있음 */
+    tierLabel?: string | null;
+    feePaid?: boolean;
     attendLabel?: string | null;
     owed: number;
     paid: number;
     balance: number;
-    feePaid: boolean;
     /** 총무 본인 — 순잔액은 통장과 합쳐 정리되므로 따로 표시하지 않음 */
     isTreasurer: boolean;
     settled: boolean;
@@ -143,24 +149,6 @@ export interface MeetupPublicSnapshot {
   }[];
   /** 닉네임 기준 송금 목록 */
   transfers: { from: string; to: string; amount: number }[];
-}
-
-export interface MeetupSummary {
-  /** 참가비 합계 (납부 여부 무관) */
-  totalFee: number;
-  /** 납부된 참가비 합계 */
-  paidFee: number;
-  totalExpense: number;
-  /** 회비에서 충당하는 지출 합계 */
-  feeCovered: number;
-  /** 참가자 분담 지출 합계 */
-  splitTotal: number;
-  /** 회비 잔액 (참가비 합계 − 회비 충당 지출). 음수 = 부족 */
-  r0: number;
-  surplusMode: MeetupSurplusMode;
-  deficitMode: MeetupDeficitMode;
-  /** 정산 후 통장에 남는 돈 */
-  finalBalance: number;
 }
 
 /** 공개 RPC 결과 */

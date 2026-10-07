@@ -13,7 +13,7 @@ import {
   formatPeriod,
   normalizePeriod,
   periodError,
-  surplusText,
+  summaryText,
 } from '@/service/meetup/utils/meetupSettlement';
 
 function ledgerSubtitle(ledger: MeetupLedger): string {
@@ -21,8 +21,7 @@ function ledgerSubtitle(ledger: MeetupLedger): string {
   // 총무 = 편집 권한 회원들 (참가자로 들어가 있으므로 이름은 참가자 목록에서)
   const names = ledger.data.participants.filter((p) => p.userId && ledger.treasurerUserIds.includes(p.userId)).map((p) => p.name);
   const parts = [`총무 ${names.length > 0 ? names.join(', ') : '미지정'}`, `참가자 ${ledger.data.participants.length}명`];
-  if (summary.totalFee > 0 || summary.feeCovered > 0) parts.push(surplusText(summary));
-  else if (summary.totalExpense > 0) parts.push(`총지출 ${summary.totalExpense.toLocaleString('ko-KR')}원`);
+  if (summary.totalExpense > 0 || summary.totalPrepaid > 0) parts.push(summaryText(summary));
   return parts.join(' · ');
 }
 
@@ -92,8 +91,7 @@ export default function MeetupManagePage() {
           id: newId(),
           userId: t.id,
           name,
-          feeTierId: null,
-          feePaid: false,
+          prepaid: 0,
           settledAmount: null,
           memo: '',
         };
