@@ -123,43 +123,49 @@ function balanceView(r: BalanceRow): { text: string; color: string } {
   return dueView(r.balance);
 }
 
-/** 주고받은 금액을 과거형으로 — "1,667원 받음" / "10,000원 보냄" */
-const doneText = (amount: number) =>
-  amount > 0 ? `${fmt(amount)}원 받음` : amount < 0 ? `${fmt(-amount)}원 보냄` : '주고받을 돈 없음';
+const signed = (n: number) => (n > 0 ? `+${fmt(n)}원` : n < 0 ? `−${fmt(-n)}원` : '0원');
 
 /**
- * 펼친 내역의 현재 상태 줄.
- * 장부 정산 완료 → 전체 금액 과거형 / 사람별 완료 → 완료 시점 금액 과거형 + 그 뒤 생긴 차액 / 그 외 → 정산 전 금액
+ * 정산 때 실제로 주고받은 송금 — 펼친 내역의 계산식에 이어 붙인다.
+ * 부호는 "미리 낸 돈 − 부담" 기준 (보냄 = +, 받음 = −) 이라 더하면 남은 금액이 된다.
+ * 사람별 완료 → 완료 시점 금액 (그 뒤 생긴 차액은 남은 금액으로 남음) / 장부 정산 완료 → 남은 금액까지 모두 주고받은 것으로
  */
-function detailStatus(r: BalanceRow, closed: boolean): { text: string; color: string }[] {
-  const doneColor = 'text-teal-700 dark:text-teal-300';
-  if (closed) {
-    // 완료 체크 뒤 차액까지 주고받은 사람은 두 번을 나눠서 (합치면 "받았다가 더 보낸" 흐름이 안 보임)
-    if (r.settled && r.diff !== 0) {
-      return [
-        { text: `✓ 정산 완료 · ${doneText(r.balance - r.diff)}`, color: doneColor },
-        { text: `✓ 추가로 ${doneText(r.diff)}`, color: doneColor },
-      ];
-    }
-    return [{ text: `✓ 정산 완료 · ${doneText(r.balance)}`, color: doneColor }];
-  }
+function settlementSteps(r: BalanceRow, closed: boolean): { label: string; amount: number }[] {
+  const step = (done: number, label: string) => ({ label: `${label} ${done > 0 ? '받음' : '보냄'}`, amount: -done });
+  const out: { label: string; amount: number }[] = [];
   if (r.settled) {
-    const out = [{ text: `✓ 정산 완료 · ${doneText(r.balance - r.diff)}`, color: doneColor }];
-    if (r.diff > 0) out.push({ text: `추가로 받을 돈 ${fmt(r.diff)}원`, color: 'text-teal-700 dark:text-teal-300' });
-    if (r.diff < 0) out.push({ text: `추가로 보낼 돈 ${fmt(-r.diff)}원`, color: 'text-red-600 dark:text-red-400' });
-    return out;
+    const done = r.balance - r.diff;
+    if (done !== 0) out.push(step(done, '정산 때'));
+    if (closed && r.diff !== 0) out.push(step(r.diff, '추가 정산'));
+  } else if (closed && r.balance !== 0) {
+    out.push(step(r.balance, '정산 때'));
   }
-  return [dueView(r.balance)];
+  return out;
 }
 
 /**
- * 펼친 내역: 참석한 이벤트별 몫 → 부담, 선입금 + 직접 결제 → 낸 돈, 차이 (계산 — 상태와 무관하게 항상) + 현재 상태
+ * 펼친 내역: 참석한 이벤트별 몫 → 부담, 선입금 + 직접 결제 → 미리 낸 돈, 차이 → 정산 송금 → 남은 금액 + 현재 상태.
+ * 정산이 끝나도 계산 내역은 그대로 보이고, 주고받은 송금이 계산식 안에 들어간다
  * @param closed 장부가 정산 완료 상태
  */
 function BalanceDetail({ r, closed }: { r: BalanceRow; closed: boolean }) {
   const line = 'flex items-baseline justify-between gap-3';
+  const bold = 'font-bold text-gray-800 dark:text-slate-100';
+  const rule = 'border-t border-gray-200 dark:border-slate-700 pt-1 mt-0.5';
   const shares = r.shares ?? [];
-  const diffText = r.balance > 0 ? `+${fmt(r.balance)}원` : r.balance < 0 ? `−${fmt(-r.balance)}원` : '0원';
+  const steps = r.isTreasurer ? [] : settlementSteps(r, closed);
+  const remaining = r.balance + steps.reduce((a, x) => a + x.amount, 0);
+  const done = closed || r.settled;
+  const status = r.isTreasurer
+    ? { text: '총무 — 통장과 합쳐 정리', color: muted }
+    : done && remaining === 0
+      ? { text: '✓ 정산 완료 · 남은 돈 없음', color: 'text-teal-700 dark:text-teal-300' }
+      : done
+        // 완료 체크 뒤 금액이 바뀐 경우
+        ? remaining > 0
+          ? { text: `추가로 받을 돈 ${fmt(remaining)}원`, color: 'text-teal-700 dark:text-teal-300' }
+          : { text: `추가로 보낼 돈 ${fmt(-remaining)}원`, color: 'text-red-600 dark:text-red-400' }
+        : dueView(r.balance);
   return (
     <div className="col-span-full sm:max-w-md mt-1.5 mb-0.5 rounded-lg bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs text-gray-600 dark:text-slate-300 tabular-nums flex flex-col gap-0.5">
       {shares.length === 0 ? (
@@ -172,7 +178,7 @@ function BalanceDetail({ r, closed }: { r: BalanceRow; closed: boolean }) {
           </div>
         ))
       )}
-      <div className={`${line} font-bold text-gray-800 dark:text-slate-100 border-t border-gray-200 dark:border-slate-700 pt-1 mt-0.5`}>
+      <div className={`${line} ${bold} ${rule}`}>
         <span>부담 합계</span>
         <span>{fmt(r.owed)}</span>
       </div>
@@ -182,21 +188,27 @@ function BalanceDetail({ r, closed }: { r: BalanceRow; closed: boolean }) {
       {!!r.paidDirect && (
         <div className={line}><span>직접 결제</span><span>{fmt(r.paidDirect)}</span></div>
       )}
-      <div className={`${line} font-bold text-gray-800 dark:text-slate-100`}>
-        <span>낸 돈 합계</span>
+      <div className={`${line} ${bold}`}>
+        <span>미리 낸 돈 합계</span>
         <span>{fmt(r.paid)}</span>
       </div>
-      <div className={`${line} font-bold text-gray-800 dark:text-slate-100 border-t border-gray-200 dark:border-slate-700 pt-1 mt-0.5`}>
-        <span>낸 돈 − 부담</span>
-        <span>{diffText}</span>
+      <div className={`${line} ${bold} ${rule}`}>
+        <span>미리 낸 돈 − 부담</span>
+        <span>{signed(r.balance)}</span>
       </div>
-      {r.isTreasurer ? (
-        <div className={`${line} ${muted}`}>총무 — 통장과 합쳐 정리</div>
-      ) : (
-        detailStatus(r, closed).map((st, k) => (
-          <div key={k} className={`flex justify-end font-bold ${st.color}`}>{st.text}</div>
-        ))
+      {steps.map((st, k) => (
+        <div key={k} className={line}>
+          <span>{st.label}</span>
+          <span>{signed(st.amount)}</span>
+        </div>
+      ))}
+      {steps.length > 0 && (
+        <div className={`${line} ${bold} ${rule}`}>
+          <span>남은 금액</span>
+          <span>{signed(remaining)}</span>
+        </div>
       )}
+      <div className={`flex justify-end font-bold ${status.color}`}>{status.text}</div>
     </div>
   );
 }
@@ -233,7 +245,7 @@ export function BalanceList({
       <div className="hidden sm:grid grid-cols-[1fr_6rem_6rem_9rem_auto] gap-2 pb-2 text-[11px] text-gray-500 dark:text-slate-400">
         <span>참가자{expandable && ' (누르면 내역)'}</span>
         <span className="text-right">부담</span>
-        <span className="text-right">낸 돈</span>
+        <span className="text-right">미리 낸 돈</span>
         <span className="text-right">정산</span>
         <span className="w-16" />
       </div>
@@ -287,7 +299,7 @@ export function BalanceList({
           <span className="sm:hidden row-span-2 self-center">{renderAction?.(i)}</span>
           <span className="sm:text-right text-xs sm:text-sm text-gray-500 sm:text-gray-700 dark:text-slate-400 sm:dark:text-slate-300 tabular-nums">
             <span className="sm:hidden">부담 </span>{fmt(r.owed)}
-            <span className="sm:hidden"> · 낸 돈 {fmt(r.paid)} · </span>
+            <span className="sm:hidden"> · 미리 낸 돈 {fmt(r.paid)} · </span>
             <span className={`sm:hidden font-bold ${bv.color}`}>{bv.text}</span>
           </span>
           <span className="hidden sm:block text-right tabular-nums text-gray-700 dark:text-slate-300">{fmt(r.paid)}</span>
