@@ -127,11 +127,17 @@ export interface MeetupPublicSnapshot {
     amount: number;
     payerName: string;
     coverLabel: string;
+    /** 나눠 낸 사람 수 (1인 금액 표시용). 이전 스냅샷에는 없음 */
+    sharerCount?: number;
   }[];
   participants: {
     name: string;
     /** 선입금 (이전 형식 스냅샷에는 없음) */
     prepaid?: number;
+    /** 직접 결제한 지출 합계 (이전 스냅샷에는 없음) */
+    paidDirect?: number;
+    /** 참석한 이벤트별 내 몫 — 부담 내역 펼치기용 (이전 스냅샷에는 없음) */
+    shares?: { label: string; amount: number }[];
     /** 빠진 이벤트 이름 (전부 참석이면 빈 배열). 이전 형식 스냅샷에는 없음 */
     absentEvents?: string[];
     /** 이전 형식 스냅샷 (참가비 구간 · 참석 기간 방식) 에만 있음 */
@@ -147,8 +153,10 @@ export interface MeetupPublicSnapshot {
     /** 정산 완료 후 생긴 차액 (미완료면 0) */
     diff: number;
   }[];
-  /** 닉네임 기준 송금 목록 */
+  /** 닉네임 기준 송금 목록 (남은 것) */
   transfers: { from: string; to: string; amount: number }[];
+  /** 정산 완료 체크된 송금 (총무 경유 방식만, 완료 시점 금액). 이전 스냅샷에는 없음 */
+  completedTransfers?: { from: string; to: string; amount: number }[];
 }
 
 /** 공개 RPC 결과 */

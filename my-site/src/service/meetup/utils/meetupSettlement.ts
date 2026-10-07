@@ -381,6 +381,27 @@ export function coverLabel(data: MeetupLedgerData, e: MeetupExpense): string {
 
 export function buildPublicSnapshot(data: MeetupLedgerData, result: SettlementResult): MeetupPublicSnapshot {
   const treasurer = data.participants.find((p) => p.id === data.treasurerId);
+  // 사람별 내역 (참석한 이벤트별 몫 · 직접 결제) — computeSettlement 와 같은 분배
+  const shares = new Map<string, { label: string; amount: number }[]>();
+  const paidDirect = new Map<string, number>();
+  data.expenses.forEach((e, k) => {
+    const label = e.label.trim() || `지출 ${k + 1}번`;
+    for (const [id, v] of splitEven(e.amount, expenseSharers(data, e))) {
+      shares.set(id, [...(shares.get(id) ?? []), { label, amount: v }]);
+    }
+    if (e.paidBy !== TREASURY) paidDirect.set(e.paidBy, (paidDirect.get(e.paidBy) ?? 0) + e.amount);
+  });
+  // 정산 완료 체크 시점에 주고받은 송금 (총무 경유 방식만 — 송금 건수 줄이기 방식은 완료 기록을 쓰지 않음)
+  const completedTransfers = result.transferMode !== 'hub'
+    ? []
+    : data.participants
+      .filter((p) => p.id !== data.treasurerId && p.settledAmount !== null && p.settledAmount !== 0)
+      .map((p) => {
+        const s = p.settledAmount as number;
+        return s < 0
+          ? { from: p.name.trim(), to: nodeName(data, TREASURY), amount: -s }
+          : { from: nodeName(data, TREASURY), to: p.name.trim(), amount: s };
+      });
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
@@ -393,10 +414,13 @@ export function buildPublicSnapshot(data: MeetupLedgerData, result: SettlementRe
       amount: e.amount,
       payerName: e.paidBy === TREASURY ? '모임 통장' : nodeName(data, e.paidBy),
       coverLabel: coverLabel(data, e),
+      sharerCount: expenseSharers(data, e).length,
     })),
     participants: result.rows.map((r) => ({
       name: r.name,
       prepaid: r.prepaid,
+      paidDirect: paidDirect.get(r.id) ?? 0,
+      shares: shares.get(r.id) ?? [],
       absentEvents: absentEventsOf(data, r.id),
       owed: r.owed,
       paid: r.paid,
@@ -410,10 +434,17 @@ export function buildPublicSnapshot(data: MeetupLedgerData, result: SettlementRe
       to: nodeName(data, t.to),
       amount: t.amount,
     })),
+    completedTransfers,
   };
 }
 
 export const won = (n: number): string => `${n.toLocaleString('ko-KR')}원`;
+
+/** 송금 카드 제목: "송금 2건 · 완료 1건" */
+export function transferTitle(snap: Pick<MeetupPublicSnapshot, 'transfers' | 'completedTransfers'>, prefix = '송금'): string {
+  const done = snap.completedTransfers?.length ?? 0;
+  return `${prefix} ${snap.transfers.length}건${done > 0 ? ` · 완료 ${done}건` : ''}`;
+}
 
 /** 한 줄 요약: "선입금 60,000원 · 총지출 40,000원" */
 export function summaryText(summary: MeetupSummary): string {

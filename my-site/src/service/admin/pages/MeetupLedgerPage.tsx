@@ -27,6 +27,7 @@ import {
   periodError,
   summaryText,
   toggleAbsent,
+  transferTitle,
   validateLedger,
   won,
 } from '@/service/meetup/utils/meetupSettlement';
@@ -698,12 +699,12 @@ export default function MeetupLedgerPage() {
             <SummaryGrid summary={result.summary} />
           </SectionCard>
 
-          <SectionCard title={`송금 ${issues.length > 0 ? '-' : result.transfers.length}건`}>
+          <SectionCard title={issues.length > 0 ? '송금 -건' : transferTitle(snapshot)}>
             {issues.length > 0 ? (
               <p className="text-sm text-amber-700 dark:text-amber-300">입력 오류를 먼저 고치세요.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                <TransferList transfers={snapshot.transfers} />
+                <TransferList transfers={snapshot.transfers} completed={snapshot.completedTransfers} />
                 <input
                   type="text"
                   value={account}
