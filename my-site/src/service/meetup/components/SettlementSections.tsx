@@ -101,19 +101,33 @@ type BalanceRow = MeetupPublicSnapshot['participants'][number];
 
 const badge = 'text-[10px] px-1.5 py-0.5 rounded';
 
-/** 순잔액을 말로 — "5,000원 받음" / "10,500원 보냄". 총무는 통장과 합쳐 정리되므로 따로 표시하지 않음 */
+const muted = 'text-gray-500 dark:text-slate-400 font-normal';
+
+/** 정산 전 금액 — "받을 돈 5,000원" / "보낼 돈 10,500원" (아직 주고받기 전이므로 '받음 · 보냄' 이 아님) */
+function dueView(balance: number): { text: string; color: string } {
+  if (balance > 0) return { text: `받을 돈 ${fmt(balance)}원`, color: 'text-teal-700 dark:text-teal-300' };
+  if (balance < 0) return { text: `보낼 돈 ${fmt(-balance)}원`, color: 'text-red-600 dark:text-red-400' };
+  return { text: '주고받을 돈 없음', color: muted };
+}
+
+/**
+ * 참가자 줄의 정산 칸. 총무는 통장과 합쳐 정리되므로 따로 표시하지 않음.
+ * 정산 완료 체크된 사람은 완료 시점에 실제로 주고받은 금액을 과거형으로 (그 뒤 차액은 배지로 따로)
+ */
 function balanceView(r: BalanceRow): { text: string; color: string } {
-  if (r.isTreasurer) return { text: '통장에서 정리', color: 'text-gray-500 dark:text-slate-400 font-normal' };
-  if (r.balance > 0) return { text: `${fmt(r.balance)}원 받음`, color: 'text-teal-700 dark:text-teal-300' };
-  if (r.balance < 0) return { text: `${fmt(-r.balance)}원 보냄`, color: 'text-red-600 dark:text-red-400' };
-  return { text: '0원', color: 'text-gray-500 dark:text-slate-400 font-normal' };
+  if (r.isTreasurer) return { text: '통장에서 정리', color: muted };
+  if (r.settled) {
+    const done = r.balance - r.diff;
+    return { text: done > 0 ? `✓ ${fmt(done)}원 받음` : done < 0 ? `✓ ${fmt(-done)}원 보냄` : '✓ 정산 완료', color: muted };
+  }
+  return dueView(r.balance);
 }
 
 /** 펼친 내역: 참석한 이벤트별 몫 → 부담, 선입금 + 직접 결제 → 낸 돈, 차이 */
 function BalanceDetail({ r }: { r: BalanceRow }) {
   const line = 'flex items-baseline justify-between gap-3';
   const shares = r.shares ?? [];
-  const bv = balanceView(r);
+  const due = dueView(r.balance);
   return (
     <div className="col-span-full sm:max-w-md mt-1.5 mb-0.5 rounded-lg bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs text-gray-600 dark:text-slate-300 tabular-nums flex flex-col gap-0.5">
       {shares.length === 0 ? (
@@ -142,7 +156,7 @@ function BalanceDetail({ r }: { r: BalanceRow }) {
       </div>
       <div className={`${line} font-bold border-t border-gray-200 dark:border-slate-700 pt-1 mt-0.5`}>
         <span>{r.isTreasurer ? '총무 — 통장과 합쳐 정리' : '낸 돈 − 부담'}</span>
-        <span className={bv.color}>{r.isTreasurer ? '' : bv.text}</span>
+        <span className={due.color}>{r.isTreasurer ? '' : due.text}</span>
       </div>
     </div>
   );
@@ -172,7 +186,7 @@ export function BalanceList({
   const expandable = rows.some((r) => r.shares);
   return (
     <div className="flex flex-col divide-y divide-gray-100 dark:divide-slate-700">
-      <div className="hidden sm:grid grid-cols-[1fr_6rem_6rem_8rem_auto] gap-2 pb-2 text-[11px] text-gray-500 dark:text-slate-400">
+      <div className="hidden sm:grid grid-cols-[1fr_6rem_6rem_9rem_auto] gap-2 pb-2 text-[11px] text-gray-500 dark:text-slate-400">
         <span>참가자{expandable && ' (누르면 내역)'}</span>
         <span className="text-right">부담</span>
         <span className="text-right">낸 돈</span>
@@ -185,7 +199,7 @@ export function BalanceList({
         return (
         <div
           key={`${r.name}-${i}`}
-          className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_6rem_6rem_8rem_auto] gap-x-2 gap-y-0.5 py-2 items-center text-sm"
+          className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_6rem_6rem_9rem_auto] gap-x-2 gap-y-0.5 py-2 items-center text-sm"
         >
           <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
             {r.shares ? (
@@ -222,7 +236,7 @@ export function BalanceList({
             {r.settled && <span className={`${badge} bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300`}>정산 완료</span>}
             {r.settled && r.diff !== 0 && (
               <span className={`${badge} bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 tabular-nums`}>
-                차액 {r.diff > 0 ? `${fmt(r.diff)} 받음` : `${fmt(-r.diff)} 보냄`}
+                {r.diff > 0 ? `추가로 받을 돈 ${fmt(r.diff)}` : `추가로 보낼 돈 ${fmt(-r.diff)}`}
               </span>
             )}
           </div>
