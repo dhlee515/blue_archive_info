@@ -8,6 +8,8 @@
       { "schaleId": 20041, "highlighted": true },
       { "schaleId": 10045, "highlighted": true },
       { "schaleId": 10135, "highlighted": true },
+      { "schaleId": 20060, "highlighted": true },
+      { "schaleId": 10148, "highlighted": false },
       { "schaleId": 10098, "highlighted": false },
       { "schaleId": 10134, "highlighted": false },
       { "schaleId": 10086, "highlighted": false },
@@ -24,6 +26,8 @@
     "students": [
       { "schaleId": 10105, "highlighted": true },
       { "schaleId": 10110, "highlighted": true },
+      { "schaleId": 10140, "highlighted": true },
+      { "schaleId": 10147, "highlighted": false },
       { "schaleId": 10123, "highlighted": false },
       { "schaleId": 10129, "highlighted": false },
       { "schaleId": 10117, "highlighted": false },
@@ -38,6 +42,7 @@
     "students": [
       { "schaleId": 10085, "highlighted": true },
       { "schaleId": 10089, "highlighted": true },
+      { "schaleId": 10149, "highlighted": false },
       { "schaleId": 20027, "highlighted": false },
       { "schaleId": 10064, "highlighted": false },
       { "schaleId": 10058, "highlighted": false },
